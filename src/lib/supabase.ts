@@ -1,10 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export const supabase = createClient(supabaseUrl, supabaseKey);
-
+// TYPES ONLY - Do not initialize Supabase here at the top level to avoid build errors.
 export type WaitlistStatus = 'Waiting' | 'Notified' | 'Seated' | 'No Show';
 
 export interface WaitlistEntry {
