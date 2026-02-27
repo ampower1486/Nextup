@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import AddPartyForm from '@/components/AddPartyForm';
 import WaitlistTable from '@/components/WaitlistTable';
 import { WaitlistEntry } from '@/lib/supabase';
@@ -15,21 +16,58 @@ interface Reservation {
 }
 
 export default function Home() {
-    const [currentTab, setCurrentTab] = useState<'Waitlist' | 'Reservations' | 'Recent' | 'Analytics'>('Waitlist');
+    const router = useRouter();
+    const [currentTab, setCurrentTab] = useState<'Waitlist' | 'Reservations' | 'Recent' | 'Analytics' | 'Admin'>('Waitlist');
     const [entries, setEntries] = useState<WaitlistEntry[]>([]);
     const [pastEntries, setPastEntries] = useState<WaitlistEntry[]>([]);
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
-    const [storeName, setStoreName] = useState('Demonstration Deli');
+    const [storeName, setStoreName] = useState('Loading...');
+    const [userRole, setUserRole] = useState<'restaurant' | 'admin'>('restaurant');
+    const [allProfiles, setAllProfiles] = useState<Record<string, string>>({});
     const [defaultSmsMessage, setDefaultSmsMessage] = useState('Your table is ready! Please head to the host stand.');
     const supabase = createClient();
+
+    useEffect(() => {
+        const getProfile = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data } = await supabase
+                    .from('profiles')
+                    .select('restaurant_name, role')
+                    .eq('id', user.id)
+                    .single();
+                if (data) {
+                    setStoreName(data.restaurant_name || 'My Restaurant');
+                    setUserRole(data.role as any);
+
+                    if (data.role === 'admin') {
+                        // Fetch all profiles to map user_id to name
+                        const { data: profiles } = await supabase.from('profiles').select('id, restaurant_name');
+                        if (profiles) {
+                            const mapping: Record<string, string> = {};
+                            profiles.forEach(p => mapping[p.id] = p.restaurant_name || 'Unknown');
+                            setAllProfiles(mapping);
+                        }
+                    }
+                }
+            }
+        };
+        getProfile();
+    }, [supabase]);
+
     useEffect(() => {
         const savedMessage = localStorage.getItem('nextup_sms_message');
         if (savedMessage) {
             setDefaultSmsMessage(savedMessage);
         }
     }, []);
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        router.push('/login');
+    };
 
     const saveSettings = () => {
         localStorage.setItem('nextup_sms_message', defaultSmsMessage);
@@ -120,11 +158,17 @@ export default function Home() {
                         <div className="icon-wrapper banana-glow banana-green"><BarChart2 size={22} strokeWidth={2} /></div>
                         <span>Analytics</span>
                     </a>
+                    {userRole === 'admin' && (
+                        <a href="#" className={`nav-item ${currentTab === 'Admin' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setCurrentTab('Admin'); }}>
+                            <div className="icon-wrapper banana-glow banana-orange"><Settings size={22} strokeWidth={2} /></div>
+                            <span>Global Admin</span>
+                        </a>
+                    )}
                     <a href="#" className="nav-item" onClick={(e) => { e.preventDefault(); setIsSettingsOpen(true); }}>
                         <div className="icon-wrapper banana-glow banana-gray"><Settings size={22} strokeWidth={2} /></div>
                         <span>Settings</span>
                     </a>
-                    <a href="#" className="nav-item nav-logout">
+                    <a href="#" className="nav-item nav-logout" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
                         <div className="icon-wrapper banana-glow banana-red"><LogOut size={22} strokeWidth={2} /></div>
                         <span>Logout</span>
                     </a>
@@ -246,6 +290,49 @@ export default function Home() {
                                         <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '0.5rem' }}>Currently Waiting</span>
                                     </div>
                                 </div>
+                            </div>
+                        )}
+
+                        {currentTab === 'Admin' && (
+                            <div>
+                                <h2 style={{ padding: '2rem 2rem 1rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Global Waitlist Management</h2>
+                                <p style={{ padding: '0 2rem 1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Viewing all active entries across all restaurant accounts.</p>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr>
+                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>RESTAURANT</th>
+                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>PARTY</th>
+                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SIZE</th>
+                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>STATUS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {entries.length === 0 ? (
+                                            <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No active entries found.</td></tr>
+                                        ) : null}
+                                        {entries.map(entry => (
+                                            <tr key={entry.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
+                                                <td style={{ padding: '1rem 2rem' }}><strong style={{ color: '#00c3ff' }}>{allProfiles[entry.user_id] || 'Loading...'}</strong></td>
+                                                <td style={{ padding: '1rem 2rem' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                        <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{entry.party_name}</strong>
+                                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{entry.phone_number || 'No Phone'}</span>
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '1rem 2rem' }}><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{entry.party_size}</span></td>
+                                                <td style={{ padding: '1rem 2rem' }}>
+                                                    <span style={{
+                                                        padding: '4px 8px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold',
+                                                        backgroundColor: entry.status === 'Notified' ? '#dcfce7' : '#f1f5f9',
+                                                        color: entry.status === 'Notified' ? '#166534' : '#475569'
+                                                    }}>
+                                                        {entry.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>

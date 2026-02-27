@@ -3,6 +3,7 @@ export type WaitlistStatus = 'Waiting' | 'Notified' | 'Seated' | 'No Show';
 
 export interface WaitlistEntry {
     id: string;
+    user_id: string;
     party_name: string;
     party_size: number;
     quoted_time: number;

@@ -10,19 +10,21 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { restaurant_user_id, party_name, party_size, phone_number, notes } = body;
+        const { restaurant_id, restaurant_user_id, party_name, party_size, phone_number, notes } = body;
+
+        const finalRestaurantId = restaurant_id || restaurant_user_id;
 
         // Validate payload
-        if (!restaurant_user_id || !party_name || !party_size) {
+        if (!finalRestaurantId || !party_name || !party_size) {
             return NextResponse.json(
-                { success: false, error: 'Missing required configuration: restaurant_user_id, party_name, and party_size are required.' },
+                { success: false, error: 'Missing required configuration: restaurant_id (or restaurant_user_id), party_name, and party_size are required.' },
                 { status: 400 }
             );
         }
 
         // Insert the incoming reservation directly into the Nextup Waitlist
         const { data, error } = await supabaseAdmin.from('waitlist_entries').insert([{
-            user_id: restaurant_user_id,
+            user_id: finalRestaurantId,
             party_name,
             party_size: parseInt(party_size, 10),
             phone_number: phone_number || null,

@@ -73,6 +73,10 @@ export default function Login() {
           <button type="submit" disabled={loading} className="btn-login">
             {loading ? 'Logging in...' : 'Sign In'}
           </button>
+
+          <div className="signup-footer">
+            <p>Don't have an account? <a href="/signup" className="forgot-password-link">Create one</a></p>
+          </div>
         </form>
       </div>
 
@@ -100,7 +104,7 @@ export default function Login() {
 
         .login-header {
           text-align: center;
-          margin-bottom: 2.5rem;
+          margin-top: 0.5rem;
         }
 
         .login-logo {
@@ -214,6 +218,17 @@ export default function Login() {
           border-radius: 10px;
           font-size: 0.875rem;
           text-align: center;
+        }
+
+        .signup-footer {
+          text-align: center;
+          margin-top: 1rem;
+          color: #94a3b8;
+          font-size: 0.9rem;
+        }
+
+        .signup-footer .forgot-password-link {
+          margin-left: 0.25rem;
         }
       `}</style>
     </div>
