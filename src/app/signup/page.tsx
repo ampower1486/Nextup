@@ -5,100 +5,100 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
 export default function Signup() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [restaurantName, setRestaurantName] = useState('');
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-    const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [restaurantName, setRestaurantName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-    const handleSignup = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-        const supabase = createClient();
+    const supabase = createClient();
 
-        // Sign up with restaurant_name in metadata so the trigger can pick it up
-        const { error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    restaurant_name: restaurantName,
-                },
-                emailRedirectTo: `${window.location.origin}/auth/callback`,
-            },
-        });
+    // Sign up with restaurant_name in metadata so the trigger can pick it up
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          restaurant_name: restaurantName,
+        },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
 
-        if (signUpError) {
-            setError(signUpError.message);
-            setLoading(false);
-        } else {
-            // Success - user might need to verify email if enabled, otherwise redirect
-            router.push('/login?message=Check your email to confirm your account');
-        }
-    };
+    if (signUpError) {
+      setError(signUpError.message);
+      setLoading(false);
+    } else {
+      // Redirect to confirmation page
+      router.push('/confirm-email');
+    }
+  };
 
-    return (
-        <div className="login-container">
-            <div className="login-box">
-                <div className="login-header">
-                    <img src="/nextup_logo_3d.png" alt="Nextup" className="login-logo" />
-                    <h1>Create Restaurant Account</h1>
-                    <p>Join Nextup to manage your waitlist.</p>
-                </div>
+  return (
+    <div className="login-container">
+      <div className="login-box">
+        <div className="login-header">
+          <img src="/nextup_logo_3d.png" alt="Nextup" className="login-logo" />
+          <h1>Create Restaurant Account</h1>
+          <p>Join Nextup to manage your waitlist.</p>
+        </div>
 
-                <form onSubmit={handleSignup} className="login-form">
-                    {error && <div className="error-message">{error}</div>}
+        <form onSubmit={handleSignup} className="login-form">
+          {error && <div className="error-message">{error}</div>}
 
-                    <div className="form-group">
-                        <label htmlFor="restaurantName">Restaurant Name</label>
-                        <input
-                            id="restaurantName"
-                            type="text"
-                            value={restaurantName}
-                            onChange={(e) => setRestaurantName(e.target.value)}
-                            required
-                            placeholder="e.g. Nano Banana Bistro"
-                        />
-                    </div>
+          <div className="form-group">
+            <label htmlFor="restaurantName">Restaurant Name</label>
+            <input
+              id="restaurantName"
+              type="text"
+              value={restaurantName}
+              onChange={(e) => setRestaurantName(e.target.value)}
+              required
+              placeholder="e.g. Nano Banana Bistro"
+            />
+          </div>
 
-                    <div className="form-group">
-                        <label htmlFor="email">Work Email</label>
-                        <input
-                            id="email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            placeholder="manager@restaurant.com"
-                        />
-                    </div>
+          <div className="form-group">
+            <label htmlFor="email">Work Email</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="manager@restaurant.com"
+            />
+          </div>
 
-                    <div className="form-group">
-                        <label htmlFor="password">Password</label>
-                        <input
-                            id="password"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            placeholder="••••••••"
-                        />
-                    </div>
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder="••••••••"
+            />
+          </div>
 
-                    <button type="submit" disabled={loading} className="btn-login">
-                        {loading ? 'Creating Account...' : 'Sign Up'}
-                    </button>
+          <button type="submit" disabled={loading} className="btn-login">
+            {loading ? 'Creating Account...' : 'Sign Up'}
+          </button>
 
-                    <div className="back-to-login">
-                        <p>Already have an account? <a href="/login" className="forgot-password-link">Log In</a></p>
-                    </div>
-                </form>
-            </div>
+          <div className="back-to-login">
+            <p>Already have an account? <a href="/login" className="forgot-password-link">Log In</a></p>
+          </div>
+        </form>
+      </div>
 
-            <style jsx>{`
+      <style jsx>{`
         .login-container {
           min-height: 100vh;
           display: flex;
@@ -235,6 +235,6 @@ export default function Signup() {
           text-decoration: underline;
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }
