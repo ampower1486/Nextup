@@ -1,0 +1,104 @@
+:root {
+  --background-color: #f4f6f9;
+  --sidebar-bg: #222b45;
+  --sidebar-active: #8f9bb3;
+  --sidebar-text: #8f9bb3;
+  --sidebar-text-active: #ffffff;
+
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+
+  --table-header-bg: #ffffff;
+  --table-border: #e2e8f0;
+  --table-row-alt: #f8fafc;
+
+  --btn-nav-dark: #222b45;
+  --btn-green: #4ade80;
+  --btn-green-hover: #22c55e;
+
+  --badge-waiting: #e0e7ff;
+  --badge-waiting-text: #3730a3;
+  --badge-notified: #f1f5f9;
+  --badge-seated: #dcfce7;
+  --font-family: 'Inter', -apple-system, sans-serif;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+/* Scrollbar styling for a cleaner look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media (max-width: 1024px) {
+  .app-container {
+    flex-direction: column !important;
+  }
+
+  .sidebar {
+    width: 100% !important;
+    height: auto !important;
+    flex-direction: row !important;
+    overflow-x: auto;
+  }
+
+  .main-area {
+    height: auto !important;
+    overflow-y: visible !important;
+  }
+
+  .content-layout {
+    flex-direction: column !important;
+  }
+
+  .right-panel {
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 1px solid var(--table-border);
+  }
+}
+
+@media (max-width: 768px) {
+
+  .waitlist-table th,
+  .waitlist-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .actions-cell {
+    flex-direction: column;
+    gap: 0.25rem !important;
+  }
+}
