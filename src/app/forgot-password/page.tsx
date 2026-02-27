@@ -1,82 +1,69 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
+export default function ForgotPassword() {
+    const [email, setEmail] = useState('');
+    const [message, setMessage] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+    const handleReset = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        setMessage(null);
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+        const supabase = createClient();
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+        });
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
-      router.push('/');
-      router.refresh();
-    }
-  };
+        if (error) {
+            setError(error.message);
+        } else {
+            setMessage('Password reset link sent! Check your email.');
+        }
+        setLoading(false);
+    };
 
-  return (
-    <div className="login-container">
-      <div className="login-box">
-        <div className="login-header">
-          <img src="/nextup_logo_3d.png" alt="Nextup" className="login-logo" />
-          <h1>Welcome to Nextup</h1>
-          <p>Login to manage your waitlist.</p>
-        </div>
+    return (
+        <div className="login-container">
+            <div className="login-box">
+                <div className="login-header">
+                    <img src="/nextup_logo_3d.png" alt="Nextup" className="login-logo" />
+                    <h1>Forgot Password</h1>
+                    <p>Enter your email to receive a reset link.</p>
+                </div>
 
-        <form onSubmit={handleLogin} className="login-form">
-          {error && <div className="error-message">{error}</div>}
+                <form onSubmit={handleReset} className="login-form">
+                    {error && <div className="error-message">{error}</div>}
+                    {message && <div className="success-message">{message}</div>}
 
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="you@restaurant.com"
-            />
-          </div>
+                    <div className="form-group">
+                        <label htmlFor="email">Email</label>
+                        <input
+                            id="email"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            placeholder="you@restaurant.com"
+                        />
+                    </div>
 
-          <div className="form-group">
-            <div className="password-header">
-              <label htmlFor="password">Password</label>
-              <a href="/forgot-password" className="forgot-password-link">Forgot Password?</a>
+                    <button type="submit" disabled={loading} className="btn-login">
+                        {loading ? 'Sending...' : 'Send Reset Link'}
+                    </button>
+
+                    <div className="back-to-login">
+                        <a href="/login" className="forgot-password-link">Back to Login</a>
+                    </div>
+                </form>
             </div>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-            />
-          </div>
 
-          <button type="submit" disabled={loading} className="btn-login">
-            {loading ? 'Logging in...' : 'Sign In'}
-          </button>
-        </form>
-      </div>
-
-      <style jsx>{`
+            <style jsx>{`
         .login-container {
           min-height: 100vh;
           display: flex;
@@ -143,24 +130,6 @@ export default function Login() {
           font-weight: 500;
         }
 
-        .password-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .forgot-password-link {
-          color: #00c3ff;
-          font-size: 0.8rem;
-          text-decoration: none;
-          transition: color 0.2s ease;
-        }
-
-        .forgot-password-link:hover {
-          color: #0077ff;
-          text-decoration: underline;
-        }
-
         .form-group input {
           background: rgba(0, 0, 0, 0.2);
           border: 1px solid rgba(255, 255, 255, 0.1);
@@ -176,10 +145,6 @@ export default function Login() {
           border-color: rgba(0, 195, 255, 0.5);
           background: rgba(0, 0, 0, 0.3);
           box-shadow: 0 0 0 3px rgba(0, 195, 255, 0.1);
-        }
-
-        .form-group input::placeholder {
-          color: #475569;
         }
 
         .btn-login {
@@ -215,7 +180,34 @@ export default function Login() {
           font-size: 0.875rem;
           text-align: center;
         }
+
+        .success-message {
+          background: rgba(34, 197, 94, 0.1);
+          border: 1px solid rgba(34, 197, 94, 0.2);
+          color: #4ade80;
+          padding: 0.875rem;
+          border-radius: 10px;
+          font-size: 0.875rem;
+          text-align: center;
+        }
+
+        .back-to-login {
+          text-align: center;
+          margin-top: 0.5rem;
+        }
+
+        .forgot-password-link {
+          color: #00c3ff;
+          font-size: 0.9rem;
+          text-decoration: none;
+          transition: color 0.2s ease;
+        }
+
+        .forgot-password-link:hover {
+          color: #0077ff;
+          text-decoration: underline;
+        }
       `}</style>
-    </div>
-  );
+        </div>
+    );
 }

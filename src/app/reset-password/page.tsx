@@ -4,79 +4,79 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
+export default function ResetPassword() {
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+    const handleUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (password !== confirmPassword) {
+            setError("Passwords don't match");
+            return;
+        }
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+        setLoading(true);
+        setError(null);
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
-      router.push('/');
-      router.refresh();
-    }
-  };
+        const supabase = createClient();
+        const { error } = await supabase.auth.updateUser({
+            password: password,
+        });
 
-  return (
-    <div className="login-container">
-      <div className="login-box">
-        <div className="login-header">
-          <img src="/nextup_logo_3d.png" alt="Nextup" className="login-logo" />
-          <h1>Welcome to Nextup</h1>
-          <p>Login to manage your waitlist.</p>
-        </div>
+        if (error) {
+            setError(error.message);
+            setLoading(false);
+        } else {
+            router.push('/login?message=Password updated successfully');
+        }
+    };
 
-        <form onSubmit={handleLogin} className="login-form">
-          {error && <div className="error-message">{error}</div>}
+    return (
+        <div className="login-container">
+            <div className="login-box">
+                <div className="login-header">
+                    <img src="/nextup_logo_3d.png" alt="Nextup" className="login-logo" />
+                    <h1>Reset Password</h1>
+                    <p>Enter your new password below.</p>
+                </div>
 
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="you@restaurant.com"
-            />
-          </div>
+                <form onSubmit={handleUpdate} className="login-form">
+                    {error && <div className="error-message">{error}</div>}
 
-          <div className="form-group">
-            <div className="password-header">
-              <label htmlFor="password">Password</label>
-              <a href="/forgot-password" className="forgot-password-link">Forgot Password?</a>
+                    <div className="form-group">
+                        <label htmlFor="password">New Password</label>
+                        <input
+                            id="password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            placeholder="••••••••"
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="confirmPassword">Confirm New Password</label>
+                        <input
+                            id="confirmPassword"
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required
+                            placeholder="••••••••"
+                        />
+                    </div>
+
+                    <button type="submit" disabled={loading} className="btn-login">
+                        {loading ? 'Updating...' : 'Update Password'}
+                    </button>
+                </form>
             </div>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-            />
-          </div>
 
-          <button type="submit" disabled={loading} className="btn-login">
-            {loading ? 'Logging in...' : 'Sign In'}
-          </button>
-        </form>
-      </div>
-
-      <style jsx>{`
+            <style jsx>{`
         .login-container {
           min-height: 100vh;
           display: flex;
@@ -143,24 +143,6 @@ export default function Login() {
           font-weight: 500;
         }
 
-        .password-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .forgot-password-link {
-          color: #00c3ff;
-          font-size: 0.8rem;
-          text-decoration: none;
-          transition: color 0.2s ease;
-        }
-
-        .forgot-password-link:hover {
-          color: #0077ff;
-          text-decoration: underline;
-        }
-
         .form-group input {
           background: rgba(0, 0, 0, 0.2);
           border: 1px solid rgba(255, 255, 255, 0.1);
@@ -176,10 +158,6 @@ export default function Login() {
           border-color: rgba(0, 195, 255, 0.5);
           background: rgba(0, 0, 0, 0.3);
           box-shadow: 0 0 0 3px rgba(0, 195, 255, 0.1);
-        }
-
-        .form-group input::placeholder {
-          color: #475569;
         }
 
         .btn-login {
@@ -216,6 +194,6 @@ export default function Login() {
           text-align: center;
         }
       `}</style>
-    </div>
-  );
+        </div>
+    );
 }
