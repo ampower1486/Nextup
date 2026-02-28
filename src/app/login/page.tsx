@@ -43,30 +43,39 @@ export default function Login() {
         <form onSubmit={handleLogin} className="login-form">
           {error && <div className="error-message">{error}</div>}
 
+          {/* Decoy inputs to trap aggressive browser autofill */}
+          <input type="text" name="fakeusernameremembered" style={{ display: 'none' }} />
+          <input type="password" name="fakepasswordremembered" style={{ display: 'none' }} />
+
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="nextup-email">Email</label>
             <input
-              id="email"
-              type="email"
+              id="nextup-email"
+              name="nextup-email-field"
+              type="text"
+              inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="you@restaurant.com"
+              autoComplete="off"
             />
           </div>
 
           <div className="form-group">
             <div className="password-header">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="nextup-password">Password</label>
               <a href="/forgot-password" className="forgot-password-link">Forgot Password?</a>
             </div>
             <input
-              id="password"
+              id="nextup-password"
+              name="nextup-password-field"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="••••••••"
+              autoComplete="new-password"
             />
           </div>
 
@@ -80,15 +89,31 @@ export default function Login() {
         </form>
       </div>
 
+      <footer className="app-footer">
+        <div className="footer-section">
+          <span>Powered by</span>
+          <img src="/conect-r-logo.png" alt="Conect-R" className="footer-logo" />
+        </div>
+        <span className="footer-divider">|</span>
+        <div className="footer-section">
+          <img src="/nextup_logo_3d.png" alt="Nextup" className="footer-logo nextup-footer-logo" />
+          <span>Nextup is a product of Conect-R LLC</span>
+        </div>
+      </footer>
+
       <style jsx>{`
         .login-container {
           min-height: 100vh;
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
           background: linear-gradient(135deg, #1e293b, #0f172a);
           font-family: 'Inter', sans-serif;
         }
+
+        .login-box {
+          margin: auto;
 
         .login-box {
           background: rgba(255, 255, 255, 0.05);
@@ -108,12 +133,12 @@ export default function Login() {
         }
 
         .login-logo {
-          width: 80px;
-          height: 80px;
-          border-radius: 20px;
+          width: 240px;
+          height: 240px;
+          border-radius: 40px;
           object-fit: cover;
-          box-shadow: 0 10px 25px rgba(0, 195, 255, 0.3);
-          margin-bottom: 1.5rem;
+          box-shadow: 0 15px 35px rgba(0, 195, 255, 0.4);
+          margin-bottom: 2rem;
         }
 
         .login-header h1 {
@@ -229,6 +254,38 @@ export default function Login() {
 
         .signup-footer .forgot-password-link {
           margin-left: 0.25rem;
+        }
+
+        /* Footer matching app/page.tsx */
+        .app-footer {
+          width: 100%;
+          padding: 1.5rem;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 2rem;
+          background-color: rgba(255, 255, 255, 0.03);
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          font-size: 0.85rem;
+          color: #94a3b8;
+          backdrop-filter: blur(10px);
+        }
+        .footer-section {
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+          font-weight: 500;
+        }
+        .footer-logo {
+          height: 24px;
+          object-fit: contain;
+        }
+        .nextup-footer-logo {
+          height: 28px;
+          border-radius: 4px;
+        }
+        .footer-divider {
+          color: rgba(255, 255, 255, 0.2);
         }
       `}</style>
     </div>
