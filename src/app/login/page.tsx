@@ -92,11 +92,11 @@ export default function Login() {
       <footer className="app-footer">
         <div className="footer-section">
           <span>Powered by</span>
-          <img src="/conect-r-logo.png" alt="Conect-R" className="footer-logo" />
+          <img src="/conect-r-logo.png" alt="Conect-R" style={{ height: '24px', objectFit: 'contain' }} />
         </div>
         <span className="footer-divider">|</span>
         <div className="footer-section">
-          <img src="/nextup_logo_3d.png" alt="Nextup" className="footer-logo nextup-footer-logo" />
+          <img src="/nextup_logo_3d.png" alt="Nextup" style={{ height: '28px', borderRadius: '4px', objectFit: 'contain' }} />
           <span>Nextup is a product of Conect-R LLC</span>
         </div>
       </footer>
@@ -264,11 +264,10 @@ export default function Login() {
           justify-content: center;
           align-items: center;
           gap: 2rem;
-          background-color: rgba(255, 255, 255, 0.03);
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          background-color: white;
+          border-top: 1px solid #e2e8f0;
           font-size: 0.85rem;
-          color: #94a3b8;
-          backdrop-filter: blur(10px);
+          color: #64748b;
         }
         .footer-section {
           display: flex;
@@ -276,16 +275,8 @@ export default function Login() {
           gap: 0.6rem;
           font-weight: 500;
         }
-        .footer-logo {
-          height: 24px;
-          object-fit: contain;
-        }
-        .nextup-footer-logo {
-          height: 28px;
-          border-radius: 4px;
-        }
         .footer-divider {
-          color: rgba(255, 255, 255, 0.2);
+          color: #cbd5e1;
         }
       `}</style>
     </div>
