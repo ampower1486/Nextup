@@ -26,6 +26,8 @@ export default function Home() {
     const [storeName, setStoreName] = useState('Loading...');
     const [userRole, setUserRole] = useState<'restaurant' | 'admin'>('restaurant');
     const [allProfiles, setAllProfiles] = useState<Record<string, string>>({});
+    const [profilesList, setProfilesList] = useState<{ id: string, name: string }[]>([]);
+    const [allRestaurants, setAllRestaurants] = useState<{ id: string, tableserve_id: string, linked_user_id: string | null, name: string }[]>([]);
     const [defaultSmsMessage, setDefaultSmsMessage] = useState('Your table is ready! Please head to the host stand.');
     const supabase = createClient();
 
@@ -47,15 +49,39 @@ export default function Home() {
                         const { data: profiles } = await supabase.from('profiles').select('id, restaurant_name');
                         if (profiles) {
                             const mapping: Record<string, string> = {};
-                            profiles.forEach(p => mapping[p.id] = p.restaurant_name || 'Unknown');
+                            const list: { id: string, name: string }[] = [];
+                            profiles.forEach(p => {
+                                mapping[p.id] = p.restaurant_name || 'Unknown';
+                                list.push({ id: p.id, name: p.restaurant_name || 'Unknown' });
+                            });
                             setAllProfiles(mapping);
+                            setProfilesList(list);
                         }
+
+                        // Fetch restaurant mappings
+                        fetchRestaurants();
                     }
                 }
             }
         };
         getProfile();
     }, [supabase]);
+
+    async function fetchRestaurants() {
+        const { data } = await supabase.from('restaurants').select('*').order('created_at', { ascending: false });
+        if (data) setAllRestaurants(data);
+    }
+
+    const linkRestaurant = async (tableserveId: string, nextupUserId: string | null) => {
+        const { error } = await supabase
+            .from('restaurants')
+            .update({ linked_user_id: nextupUserId || null })
+            .eq('tableserve_id', tableserveId);
+
+        if (!error) {
+            fetchRestaurants();
+        }
+    };
 
     useEffect(() => {
         const savedMessage = localStorage.getItem('nextup_sms_message');
@@ -294,10 +320,13 @@ export default function Home() {
                         )}
 
                         {currentTab === 'Admin' && (
-                            <div>
-                                <h2 style={{ padding: '2rem 2rem 1rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Global Waitlist Management</h2>
-                                <p style={{ padding: '0 2rem 1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Viewing all active entries across all restaurant accounts.</p>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                            <div style={{ padding: '0 0 4rem' }}>
+                                <div style={{ borderBottom: '1px solid var(--table-border)', marginBottom: '2rem' }}>
+                                    <h2 style={{ padding: '2rem 2rem 0.5rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Global Waitlist Management</h2>
+                                    <p style={{ padding: '0 2rem 1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Viewing all active entries across all restaurant accounts.</p>
+                                </div>
+
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginBottom: '4rem' }}>
                                     <thead>
                                         <tr>
                                             <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>RESTAURANT</th>
@@ -312,7 +341,11 @@ export default function Home() {
                                         ) : null}
                                         {entries.map(entry => (
                                             <tr key={entry.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
-                                                <td style={{ padding: '1rem 2rem' }}><strong style={{ color: '#00c3ff' }}>{allProfiles[entry.user_id] || 'Loading...'}</strong></td>
+                                                <td style={{ padding: '1rem 2rem' }}>
+                                                    <strong style={{ color: entry.user_id ? '#00c3ff' : '#64748b' }}>
+                                                        {entry.user_id ? (allProfiles[entry.user_id] || 'Loading...') : 'Unassigned (Webhook)'}
+                                                    </strong>
+                                                </td>
                                                 <td style={{ padding: '1rem 2rem' }}>
                                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                                         <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{entry.party_name}</strong>
@@ -333,6 +366,52 @@ export default function Home() {
                                         ))}
                                     </tbody>
                                 </table>
+
+                                <div style={{ borderTop: '4px solid var(--table-border)', paddingTop: '2rem' }}>
+                                    <h2 style={{ padding: '0 2rem 0.5rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>TableServe Restaurant Mapping</h2>
+                                    <p style={{ padding: '0 2rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Assign synced TableServe restaurants to registered Nextup accounts.</p>
+
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>TABLESERVE ID</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>DISPLAY NAME</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>LINKED NEXTUP ACCOUNT</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {allRestaurants.length === 0 ? (
+                                                <tr><td colSpan={3} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No restaurants synced yet. Send a reservation from TableServe to see them here.</td></tr>
+                                            ) : null}
+                                            {allRestaurants.map(rest => (
+                                                <tr key={rest.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
+                                                    <td style={{ padding: '1.25rem 2rem' }}><code style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem' }}>{rest.tableserve_id}</code></td>
+                                                    <td style={{ padding: '1.25rem 2rem' }}><strong style={{ color: 'var(--text-primary)' }}>{rest.name}</strong></td>
+                                                    <td style={{ padding: '1.25rem 2rem' }}>
+                                                        <select
+                                                            value={rest.linked_user_id || ''}
+                                                            onChange={(e) => linkRestaurant(rest.tableserve_id, e.target.value)}
+                                                            style={{
+                                                                padding: '0.5rem 1rem',
+                                                                borderRadius: '8px',
+                                                                border: '1px solid var(--table-border)',
+                                                                background: rest.linked_user_id ? '#f0f9ff' : '#fff7ed',
+                                                                color: rest.linked_user_id ? '#0369a1' : '#c2410c',
+                                                                fontWeight: '600',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            <option value="">-- Unassigned --</option>
+                                                            {profilesList.map(profile => (
+                                                                <option key={profile.id} value={profile.id}>{profile.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
                     </div>

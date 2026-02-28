@@ -13,4 +13,5 @@ export interface WaitlistEntry {
     status: WaitlistStatus;
     phone_number?: string;
     is_tableserve: boolean;
+    restaurant_id?: string;
 }
