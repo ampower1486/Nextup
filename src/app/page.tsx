@@ -144,6 +144,28 @@ export default function Home() {
         fetchPastEntries();
     };
 
+    const resetWaitlist = async () => {
+        const confirmed = window.confirm("WARNING: This will permanently erase ALL today's waitlist data and history. Incoming reservations will NOT be affected. Are you sure?");
+        if (!confirmed) return;
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { error } = await supabase
+            .from('waitlist_entries')
+            .delete()
+            .eq('user_id', user.id);
+
+        if (error) {
+            alert("Error resetting waitlist: " + error.message);
+        } else {
+            fetchEntries();
+            fetchPastEntries();
+            setIsSettingsOpen(false);
+            alert("Waitlist has been successfully reset.");
+        }
+    };
+
     async function fetchReservations() {
         const res = await fetch('/api/tableserve');
         const data = await res.json();
@@ -489,6 +511,30 @@ export default function Home() {
                                     className="settings-input"
                                     rows={3}
                                 />
+
+                                <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '2px solid #fee2e2' }}>
+                                    <h4 style={{ color: '#dc2626', margin: '0 0 0.5rem', fontSize: '0.9rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Danger Zone</h4>
+                                    <p style={{ color: '#7f1d1d', fontSize: '0.85rem', marginBottom: '1rem' }}>Erase all current waitlist entries and history. This action cannot be undone.</p>
+                                    <button
+                                        onClick={resetWaitlist}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.85rem',
+                                            background: '#ef4444',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            fontWeight: '700',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.background = '#dc2626'}
+                                        onMouseOut={(e) => e.currentTarget.style.background = '#ef4444'}
+                                    >
+                                        Reset Today's Waitlist
+                                    </button>
+                                </div>
                             </div>
                             <div className="modal-actions">
                                 <button className="btn-cancel" onClick={() => {
