@@ -161,7 +161,7 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
                     <tr>
                         <th>PARTY</th>
                         <th>SIZE</th>
-                        <th>QUOTED ▾</th>
+                        <th>QUOTED</th>
                         <th>WAIT</th>
                         <th style={{ textAlign: 'center' }}>NOTIFY</th>
                         <th style={{ textAlign: 'center' }}>ACTIONS</th>
@@ -201,9 +201,6 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
                                 <div className="notify-actions">
                                     <button className="btn-action btn-message" title="Chat" onClick={() => openChat(entry)}>
                                         <MessageSquare size={16} />
-                                    </button>
-                                    <button className="btn-action btn-call" title="Call" onClick={() => alert(`Calling ${entry.phone_number || 'unknown number'}...`)}>
-                                        <Phone size={16} />
                                     </button>
                                 </div>
                             </td>
@@ -305,7 +302,7 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
             background-color: #f8fafc;
         }
         .tableserve-row {
-          background-color: #f0f9ff !important;
+          background-color: #dbeafe !important;
         }
 
         .party-info {
