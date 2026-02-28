@@ -24,6 +24,7 @@ export default function Home() {
     const [entries, setEntries] = useState<WaitlistEntry[]>([]);
     const [pastEntries, setPastEntries] = useState<WaitlistEntry[]>([]);
     const [reservations, setReservations] = useState<Reservation[]>([]);
+    const [resFilter, setResFilter] = useState<'week' | 'month'>('month');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -264,7 +265,47 @@ export default function Home() {
 
                         {currentTab === 'Reservations' && (
                             <div>
-                                <h2 style={{ padding: '2rem 2rem 1rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>This Week's Reservations</h2>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2rem 2rem 1rem' }}>
+                                    <h2 style={{ margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>
+                                        {resFilter === 'week' ? "This Week's" : "This Month's"} Reservations
+                                    </h2>
+                                    <div className="filter-toggle" style={{ display: 'flex', background: '#f1f5f9', padding: '0.25rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                        <button
+                                            onClick={() => setResFilter('week')}
+                                            style={{
+                                                padding: '0.5rem 1rem',
+                                                borderRadius: '6px',
+                                                border: 'none',
+                                                fontSize: '0.85rem',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                background: resFilter === 'week' ? 'white' : 'transparent',
+                                                color: resFilter === 'week' ? '#3b82f6' : '#64748b',
+                                                boxShadow: resFilter === 'week' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            Week
+                                        </button>
+                                        <button
+                                            onClick={() => setResFilter('month')}
+                                            style={{
+                                                padding: '0.5rem 1rem',
+                                                borderRadius: '6px',
+                                                border: 'none',
+                                                fontSize: '0.85rem',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                background: resFilter === 'month' ? 'white' : 'transparent',
+                                                color: resFilter === 'month' ? '#3b82f6' : '#64748b',
+                                                boxShadow: resFilter === 'month' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            Month
+                                        </button>
+                                    </div>
+                                </div>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                     <thead>
                                         <tr>
@@ -275,23 +316,41 @@ export default function Home() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {reservations.length === 0 ? (
-                                            <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No reservations.</td></tr>
+                                        {reservations
+                                            .filter(res => {
+                                                const resDate = new Date(res.date_time);
+                                                const now = new Date();
+                                                const diffDays = (resDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+                                                if (resFilter === 'week') return diffDays >= -1 && diffDays <= 7;
+                                                return diffDays >= -1 && diffDays <= 30;
+                                            })
+                                            .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
+                                            .length === 0 ? (
+                                            <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No reservations for this period.</td></tr>
                                         ) : null}
-                                        {reservations.map(res => (
-                                            <tr key={res.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
-                                                <td style={{ padding: '1rem 2rem' }}>
-                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                        <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{res.name}</strong>
-                                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{res.phone_number || 'No Phone'}</span>
-                                                        {res.notes && <span style={{ fontSize: '0.75rem', color: '#8b5cf6', marginTop: '2px', fontStyle: 'italic' }}>Note: {res.notes}</span>}
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '1rem 2rem' }}><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{res.size}</span></td>
-                                                <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{res.created_at ? new Date(res.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-'}</td>
-                                                <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(res.date_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
-                                            </tr>
-                                        ))}
+                                        {reservations
+                                            .filter(res => {
+                                                const resDate = new Date(res.date_time);
+                                                const now = new Date();
+                                                const diffDays = (resDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+                                                if (resFilter === 'week') return diffDays >= -1 && diffDays <= 7;
+                                                return diffDays >= -1 && diffDays <= 30;
+                                            })
+                                            .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
+                                            .map(res => (
+                                                <tr key={res.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
+                                                    <td style={{ padding: '1rem 2rem' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{res.name}</strong>
+                                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{res.phone_number || 'No Phone'}</span>
+                                                            {res.notes && <span style={{ fontSize: '0.75rem', color: '#8b5cf6', marginTop: '2px', fontStyle: 'italic' }}>Note: {res.notes}</span>}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '1rem 2rem' }}><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{res.size}</span></td>
+                                                    <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{res.created_at ? new Date(res.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-'}</td>
+                                                    <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(res.date_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                                                </tr>
+                                            ))}
                                     </tbody>
                                 </table>
                             </div>

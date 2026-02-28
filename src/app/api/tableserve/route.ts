@@ -13,6 +13,9 @@ export async function GET() {
         { id: '5', name: 'Smith Party', phone_number: '', notes: '', date_time: new Date(now + dayMs * 2 + 1 * 3600000).toISOString(), size: 3, created_at: new Date(now - 72 * 3600000).toISOString() },
         { id: '6', name: 'Johnson', phone_number: '(444) 333-5555', notes: 'Allergy: peanuts', date_time: new Date(now + dayMs * 3 + 3 * 3600000).toISOString(), size: 2, created_at: new Date(now - 80 * 3600000).toISOString() },
         { id: '7', name: 'Chen Event', phone_number: '(222) 999-8888', notes: 'Corporate event', date_time: new Date(now + dayMs * 5 + 4 * 3600000).toISOString(), size: 12, created_at: new Date(now - 120 * 3600000).toISOString() },
+        { id: '8', name: 'Rodriguez Wedding', phone_number: '(916) 555-0199', notes: 'Large party, needs setup', date_time: new Date(now + dayMs * 15).toISOString(), size: 25, created_at: new Date(now - dayMs * 5).toISOString() },
+        { id: '9', name: 'Baker Birthday', phone_number: '(916) 555-0122', notes: 'Cake in fridge', date_time: new Date(now + dayMs * 25).toISOString(), size: 8, created_at: new Date(now - dayMs * 10).toISOString() },
+        { id: '10', name: 'Future Event', phone_number: '(916) 555-0188', notes: 'Next month prep', date_time: new Date(now + dayMs * 45).toISOString(), size: 4, created_at: new Date(now - dayMs * 12).toISOString() },
     ];
 
     return NextResponse.json({ reservations: mockReservations });
