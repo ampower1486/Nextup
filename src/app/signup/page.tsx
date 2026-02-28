@@ -23,11 +23,19 @@ export default function Signup() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: {
+          restaurant_name: 'New Restaurant'
+        }
       },
     });
 
     if (signUpError) {
-      setError(signUpError.message);
+      // Check for specific common errors
+      if (signUpError.message.includes('already registered')) {
+        setError('An account with this email already exists. Try logging in.');
+      } else {
+        setError(signUpError.message);
+      }
       setLoading(false);
     } else {
       // Redirect to confirmation page

@@ -52,7 +52,7 @@ export default function Login() {
             <input
               id="nextup-email"
               name="nextup-email-field"
-              type="text"
+              type="email"
               inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -113,9 +113,6 @@ export default function Login() {
         }
 
         .login-box {
-          margin: auto;
-
-        .login-box {
           background: rgba(255, 255, 255, 0.05);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
@@ -125,6 +122,7 @@ export default function Login() {
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
           width: 100%;
           max-width: 420px;
+          margin: auto;
         }
 
         .login-header {
