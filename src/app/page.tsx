@@ -29,6 +29,7 @@ export default function Home() {
     const [profilesList, setProfilesList] = useState<{ id: string, name: string }[]>([]);
     const [allRestaurants, setAllRestaurants] = useState<{ id: string, tableserve_id: string, linked_user_id: string | null, name: string }[]>([]);
     const [defaultSmsMessage, setDefaultSmsMessage] = useState('Your table is ready! Please head to the host stand.');
+    const [isResetConfirming, setIsResetConfirming] = useState(false);
     const supabase = createClient();
 
     useEffect(() => {
@@ -145,23 +146,28 @@ export default function Home() {
     };
 
     const resetWaitlist = async () => {
-        const confirmed = window.confirm("WARNING: This will permanently erase ALL today's waitlist data and history. Incoming reservations will NOT be affected. Are you sure?");
-        if (!confirmed) return;
-
+        console.log("Reset Waitlist triggered");
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+            console.error("No user found for reset");
+            return;
+        }
 
+        console.log("Deleting entries for user:", user.id);
         const { error } = await supabase
             .from('waitlist_entries')
             .delete()
             .eq('user_id', user.id);
 
         if (error) {
+            console.error("Reset Error:", error);
             alert("Error resetting waitlist: " + error.message);
         } else {
+            console.log("Reset successful");
             fetchEntries();
             fetchPastEntries();
             setIsSettingsOpen(false);
+            setIsResetConfirming(false);
             alert("Waitlist has been successfully reset.");
         }
     };
@@ -513,27 +519,47 @@ export default function Home() {
                                 />
 
                                 <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '2px solid #fee2e2' }}>
-                                    <h4 style={{ color: '#dc2626', margin: '0 0 0.5rem', fontSize: '0.9rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Danger Zone</h4>
-                                    <p style={{ color: '#7f1d1d', fontSize: '0.85rem', marginBottom: '1rem' }}>Erase all current waitlist entries and history. This action cannot be undone.</p>
-                                    <button
-                                        onClick={resetWaitlist}
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.85rem',
-                                            background: '#ef4444',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '12px',
-                                            fontWeight: '700',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
-                                        }}
-                                        onMouseOver={(e) => e.currentTarget.style.background = '#dc2626'}
-                                        onMouseOut={(e) => e.currentTarget.style.background = '#ef4444'}
-                                    >
-                                        Reset Today's Waitlist
-                                    </button>
+                                    {!isResetConfirming ? (
+                                        <button
+                                            onClick={() => setIsResetConfirming(true)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '0.85rem',
+                                                background: '#ef4444',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '12px',
+                                                fontWeight: '700',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                                            }}
+                                            onMouseOver={(e) => e.currentTarget.style.background = '#dc2626'}
+                                            onMouseOut={(e) => e.currentTarget.style.background = '#ef4444'}
+                                        >
+                                            Reset Today's Waitlist
+                                        </button>
+                                    ) : (
+                                        <div style={{ textAlign: 'center' }}>
+                                            <p style={{ color: '#dc2626', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                                                this action can not be undone and all info will be erased.
+                                            </p>
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <button
+                                                    onClick={() => setIsResetConfirming(false)}
+                                                    style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', fontWeight: '600', cursor: 'pointer' }}
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={resetWaitlist}
+                                                    style={{ flex: 2, padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#dc2626', color: 'white', fontWeight: '700', cursor: 'pointer' }}
+                                                >
+                                                    CONFIRM RESET
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="modal-actions">
