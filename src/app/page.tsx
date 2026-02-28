@@ -888,7 +888,85 @@ export default function Home() {
         .btn-close:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3); }
         
         @media (max-width: 1024px) {
-            .fab-add { right: 2rem; }
+            .content-layout {
+                flex-direction: column;
+            }
+            .right-panel {
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid var(--table-border);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                flex-direction: row;
+                padding: 0.5rem;
+                justify-content: space-between;
+                align-items: center;
+                border-right: none;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+            .sidebar-logo {
+                margin: 0;
+                width: auto;
+                display: none;
+            }
+            .sidebar-nav {
+                flex-direction: row;
+                gap: 0.5rem;
+                justify-content: center;
+                width: auto;
+                flex: 1;
+            }
+            .nav-item {
+                flex: 1;
+                max-width: 80px;
+            }
+            .nav-item span {
+                display: none;
+            }
+            .nav-logout {
+                margin: 0;
+                padding: 0;
+                width: auto;
+                flex: 0;
+            }
+            .top-header {
+                height: auto;
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+                padding: 1rem;
+            }
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+            .search-container {
+                width: 100%;
+                order: 2;
+                margin-top: 0.5rem;
+            }
+            .btn-add-party-header {
+                order: 1;
+                width: 100%;
+                justify-content: center;
+            }
+            .app-footer {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+            .modal-content {
+                padding: 1.5rem;
+            }
         }
       `}</style>
         </div >
