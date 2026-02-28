@@ -173,7 +173,6 @@ export default function Home() {
             fetchPastEntries();
             setIsSettingsOpen(false);
             setIsResetConfirming(false);
-            alert("Waitlist and Recent history have been successfully reset.");
         }
     };
 
