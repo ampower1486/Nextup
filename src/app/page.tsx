@@ -153,11 +153,12 @@ export default function Home() {
             return;
         }
 
-        console.log("Deleting entries for user:", user.id);
+        console.log("Deleting all visible entries...");
+        // Using .neq with a dummy UUID to target all rows (Supabase requires at least one filter for delete)
         const { error } = await supabase
             .from('waitlist_entries')
             .delete()
-            .eq('user_id', user.id);
+            .neq('id', '00000000-0000-0000-0000-000000000000');
 
         if (error) {
             console.error("Reset Error:", error);
@@ -168,7 +169,7 @@ export default function Home() {
             fetchPastEntries();
             setIsSettingsOpen(false);
             setIsResetConfirming(false);
-            alert("Waitlist has been successfully reset.");
+            alert("Waitlist and Recent history have been successfully reset.");
         }
     };
 
