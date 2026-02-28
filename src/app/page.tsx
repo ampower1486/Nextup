@@ -179,12 +179,16 @@ export default function Home() {
     }
 
     async function handleCheckIn(res: Reservation) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
         await supabase.from('waitlist_entries').insert([{
             party_name: res.name,
             party_size: res.size,
             quoted_time: 0,
             status: 'Waiting',
-            is_tableserve: true
+            is_tableserve: true,
+            user_id: user.id
         }]);
         setReservations(prev => prev.filter(r => r.id !== res.id));
     }
