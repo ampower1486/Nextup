@@ -25,6 +25,8 @@ export default function Home() {
     const [pastEntries, setPastEntries] = useState<WaitlistEntry[]>([]);
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [resFilter, setResFilter] = useState<'week' | 'month'>('month');
+    const [externalRestaurants, setExternalRestaurants] = useState<{ id: string, name: string }[]>([]);
+    const [externalMappings, setExternalMappings] = useState<{ user_id: string, external_restaurant_id: string, external_restaurant_name: string }[]>([]);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -110,6 +112,10 @@ export default function Home() {
         fetchEntries();
         fetchPastEntries();
         fetchReservations();
+        if (userRole === 'admin') {
+            fetchExternalRestaurants();
+            fetchExternalMappings();
+        }
 
         const channel = supabase
             .channel('schema-db-changes')
@@ -180,10 +186,89 @@ export default function Home() {
         }
     };
 
+    async function fetchExternalRestaurants() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Use dynamic import for external client to avoid SSR issues if any
+        const { externalSupabase } = await import('@/lib/external_supabase');
+        const { data } = await externalSupabase.from('restaurants').select('id, name').order('name');
+        if (data) setExternalRestaurants(data);
+    }
+
+    async function fetchExternalMappings() {
+        const { data } = await supabase.from('external_mappings').select('*');
+        if (data) setExternalMappings(data);
+    }
+
+    async function linkExternalRestaurant(userId: string, externalRestId: string) {
+        if (!userId) return;
+
+        const restName = externalRestaurants.find(r => r.id === externalRestId)?.name || '';
+
+        const { error } = await supabase
+            .from('external_mappings')
+            .upsert({
+                user_id: userId,
+                external_restaurant_id: externalRestId,
+                external_restaurant_name: restName
+            }, { onConflict: 'user_id' });
+
+        if (!error) {
+            fetchExternalMappings();
+        }
+    }
+
     async function fetchReservations() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // 1. Check if user has an external mapping
+        const { data: mapping } = await supabase
+            .from('external_mappings')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+
+        if (mapping) {
+            // 2. Fetch from external Supabase
+            const { externalSupabase } = await import('@/lib/external_supabase');
+            const { data: extRes, error } = await externalSupabase
+                .from('reservations')
+                .select('*')
+                .eq('restaurant_id', mapping.external_restaurant_id)
+                .eq('status', 'confirmed') // Only confirmed ones
+                .order('date', { ascending: true });
+
+            if (!error && extRes) {
+                // 3. Map to our Reservation interface
+                const mapped: Reservation[] = extRes.map(r => ({
+                    id: r.id,
+                    name: r.guest_name,
+                    size: r.party_size,
+                    date_time: `${r.date}T${convertToIsoTime(r.time_slot)}`,
+                    phone_number: r.guest_phone,
+                    notes: r.notes,
+                    created_at: r.created_at
+                }));
+                setReservations(mapped);
+                return;
+            }
+        }
+
+        // Fallback to mock/internal if no mapping or error
         const res = await fetch('/api/tableserve');
         const data = await res.json();
         setReservations(data.reservations || []);
+    }
+
+    function convertToIsoTime(timeSlot: string) {
+        // e.g., "5:00 PM" -> "17:00:00"
+        const [time, modifier] = timeSlot.split(' ');
+        let [hours, minutes] = time.split(':');
+        if (hours === '12') hours = '00';
+        if (modifier === 'PM') hours = (parseInt(hours, 10) + 12).toString();
+        return `${hours.padStart(2, '0')}:${minutes}:00`;
     }
 
     async function handleCheckIn(res: Reservation) {
@@ -517,6 +602,55 @@ export default function Home() {
                                                     </td>
                                                 </tr>
                                             ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div style={{ borderTop: '4px solid var(--table-border)', paddingTop: '2rem' }}>
+                                    <h2 style={{ padding: '0 2rem 0.5rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>External Restaurant Mapping</h2>
+                                    <p style={{ padding: '0 2rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Link local Nextup users to restaurants from the external project.</p>
+
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>NEXTUP USER</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>EXTERNAL RESTAURANT</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {profilesList.length === 0 ? (
+                                                <tr><td colSpan={2} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No users found.</td></tr>
+                                            ) : null}
+                                            {profilesList.map(profile => {
+                                                const mapping = externalMappings.find(m => m.user_id === profile.id);
+                                                return (
+                                                    <tr key={profile.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
+                                                        <td style={{ padding: '1.25rem 2rem' }}><strong style={{ color: 'var(--text-primary)' }}>{profile.name}</strong></td>
+                                                        <td style={{ padding: '1.25rem 2rem' }}>
+                                                            <select
+                                                                value={mapping?.external_restaurant_id || ''}
+                                                                onChange={(e) => linkExternalRestaurant(profile.id, e.target.value)}
+                                                                style={{
+                                                                    padding: '0.5rem 1rem',
+                                                                    borderRadius: '8px',
+                                                                    border: '1px solid var(--table-border)',
+                                                                    background: mapping ? '#f0f9ff' : '#fff7ed',
+                                                                    color: mapping ? '#0369a1' : '#c2410c',
+                                                                    fontWeight: '600',
+                                                                    cursor: 'pointer',
+                                                                    width: '100%',
+                                                                    maxWidth: '300px'
+                                                                }}
+                                                            >
+                                                                <option value="">-- No External Restaurant linked --</option>
+                                                                {externalRestaurants.map(ext => (
+                                                                    <option key={ext.id} value={ext.id}>{ext.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
