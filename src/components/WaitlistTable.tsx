@@ -177,10 +177,10 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
                     ) : null}
                     {entries.map((entry) => (
                         <tr key={entry.id} className={entry.is_tableserve ? 'tableserve-row' : ''}>
-                            <td>
                                 <div className="party-info">
                                     <strong className="party-name">{entry.party_name}</strong>
                                     <span className="party-phone">{entry.phone_number || 'No Phone'}</span>
+                                    <span className="party-time" style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '2px' }}>Added: {new Date(entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
                                     {entry.notes && <span className="source-label" style={{ color: '#8b5cf6', marginTop: '4px' }}>Note: {entry.notes}</span>}
                                     {entry.is_tableserve && <span className="source-label">TableServe</span>}
                                 </div>
@@ -221,54 +221,58 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
                             </td>
                         </tr>
                     ))}
-                </tbody>
-            </table>
+            </tbody>
+        </table>
 
-            {editingEntry && (
-                <div className="modal-overlay" onClick={() => setEditingEntry(null)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <h2>Edit {editingEntry.party_name}</h2>
-                        <div className="form-group">
-                            <label>Party Name</label>
-                            <input value={editName} onChange={e => setEditName(e.target.value)} />
-                        </div>
-                        <div className="form-group">
-                            <label>Party Size</label>
-                            <input type="number" min="1" value={editSize} onChange={e => setEditSize(parseInt(e.target.value))} />
-                        </div>
-                        <div className="form-group">
-                            <label>Phone Number (Optional)</label>
-                            <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="+1234567890" />
-                        </div>
-                        <div className="form-group">
-                            <label>Notes (Optional)</label>
-                            <textarea rows={2} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="e.g. High chair needed" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', fontFamily: 'inherit', resize: 'vertical' }} />
-                        </div>
-                        <div className="modal-actions">
-                            <button className="btn-cancel-modal" onClick={() => setEditingEntry(null)}>Cancel</button>
-                            <button className="btn-save-modal" onClick={saveEdit}>Save Changes</button>
-                        </div>
+            {
+        editingEntry && (
+            <div className="modal-overlay" onClick={() => setEditingEntry(null)}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <h2>Edit {editingEntry.party_name}</h2>
+                    <div className="form-group">
+                        <label>Party Name</label>
+                        <input value={editName} onChange={e => setEditName(e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                        <label>Party Size</label>
+                        <input type="number" min="1" value={editSize} onChange={e => setEditSize(parseInt(e.target.value))} />
+                    </div>
+                    <div className="form-group">
+                        <label>Phone Number (Optional)</label>
+                        <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="+1234567890" />
+                    </div>
+                    <div className="form-group">
+                        <label>Notes (Optional)</label>
+                        <textarea rows={2} value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="e.g. High chair needed" style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', fontFamily: 'inherit', resize: 'vertical' }} />
+                    </div>
+                    <div className="modal-actions">
+                        <button className="btn-cancel-modal" onClick={() => setEditingEntry(null)}>Cancel</button>
+                        <button className="btn-save-modal" onClick={saveEdit}>Save Changes</button>
                     </div>
                 </div>
-            )}
+            </div>
+        )
+    }
 
-            {chattingEntry && (
-                <div className="modal-overlay" onClick={() => setChattingEntry(null)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <h2>Message {chattingEntry.party_name}</h2>
-                        <div className="form-group">
-                            <label>Custom Message</label>
-                            <textarea rows={4} value={chatMessage} onChange={e => setChatMessage(e.target.value)} />
-                        </div>
-                        <div className="modal-actions">
-                            <button className="btn-cancel-modal" onClick={() => setChattingEntry(null)}>Cancel</button>
-                            <button className="btn-save-modal" onClick={sendChat}>Send SMS</button>
-                        </div>
+    {
+        chattingEntry && (
+            <div className="modal-overlay" onClick={() => setChattingEntry(null)}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <h2>Message {chattingEntry.party_name}</h2>
+                    <div className="form-group">
+                        <label>Custom Message</label>
+                        <textarea rows={4} value={chatMessage} onChange={e => setChatMessage(e.target.value)} />
+                    </div>
+                    <div className="modal-actions">
+                        <button className="btn-cancel-modal" onClick={() => setChattingEntry(null)}>Cancel</button>
+                        <button className="btn-save-modal" onClick={sendChat}>Send SMS</button>
                     </div>
                 </div>
-            )}
+            </div>
+        )
+    }
 
-            <style jsx>{`
+    <style jsx>{`
         .table-container {
           background-color: white;
           overflow: hidden;
@@ -520,6 +524,6 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
             border-color: #34d399;
         }
       `}</style>
-        </div>
+        </div >
     );
 }

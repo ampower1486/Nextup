@@ -1,6 +1,4 @@
-// TYPES ONLY - Do not initialize Supabase here at the top level to avoid build errors.
-export type WaitlistStatus = 'Waiting' | 'Notified' | 'Seated' | 'No Show';
-
+export type WaitlistStatus = 'Waiting' | 'Notified' | 'Seated' | 'No Show' | 'Archived';
 export interface WaitlistEntry {
     id: string;
     user_id: string;

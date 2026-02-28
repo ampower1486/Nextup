@@ -111,7 +111,7 @@ export default function Home() {
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'waitlist_entries' },
-                () => fetchEntries()
+                () => { fetchEntries(); fetchPastEntries(); }
             )
             .subscribe();
 
@@ -157,8 +157,9 @@ export default function Home() {
         // Using .neq with a dummy UUID to target all rows (Supabase requires at least one filter for delete)
         const { error } = await supabase
             .from('waitlist_entries')
-            .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000');
+            .update({ status: 'Archived' })
+            .neq('id', '00000000-0000-0000-0000-000000000000')
+            .in('status', ['Waiting', 'Notified', 'Seated', 'No Show']);
 
         if (error) {
             console.error("Reset Error:", error);
@@ -292,6 +293,7 @@ export default function Home() {
                                             <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>PARTY</th>
                                             <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SIZE</th>
                                             <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>STATUS</th>
+                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>TIME ADDED</th>
                                             <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>TIME SEATED / CANCELED</th>
                                             <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem', textAlign: 'center' }}>ACTIONS</th>
                                         </tr>
@@ -318,7 +320,8 @@ export default function Home() {
                                                         {entry.status}
                                                     </span>
                                                 </td>
-                                                <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(entry.updated_at || entry.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                                                <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
+                                                <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(entry.updated_at || entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
                                                 <td style={{ padding: '1rem 2rem', textAlign: 'center' }}>
                                                     <button onClick={() => restoreParty(entry.id)} style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)' }}
                                                         onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 15px rgba(59, 130, 246, 0.4)'; }}
