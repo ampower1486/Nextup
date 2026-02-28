@@ -7,7 +7,6 @@ import { createClient } from '@/utils/supabase/client';
 export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [restaurantName, setRestaurantName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -19,14 +18,10 @@ export default function Signup() {
 
     const supabase = createClient();
 
-    // Sign up with restaurant_name in metadata so the trigger can pick it up
     const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: {
-          restaurant_name: restaurantName,
-        },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -51,18 +46,6 @@ export default function Signup() {
 
         <form onSubmit={handleSignup} className="login-form">
           {error && <div className="error-message">{error}</div>}
-
-          <div className="form-group">
-            <label htmlFor="restaurantName">Restaurant Name</label>
-            <input
-              id="restaurantName"
-              type="text"
-              value={restaurantName}
-              onChange={(e) => setRestaurantName(e.target.value)}
-              required
-              placeholder="e.g. Nano Banana Bistro"
-            />
-          </div>
 
           <div className="form-group">
             <label htmlFor="email">Work Email</label>
