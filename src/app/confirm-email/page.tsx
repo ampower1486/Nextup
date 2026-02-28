@@ -1,47 +1,103 @@
 'use client';
 
-import { Mail, ArrowLeft } from 'lucide-react';
+import { useState } from 'react';
+import { Mail, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import { createClient } from '@/utils/supabase/client';
 
 export default function ConfirmEmail() {
-    return (
-        <div className="confirm-container">
-            <div className="confirm-box">
-                <div className="confirm-header">
-                    <div className="icon-pulse">
-                        <Mail size={48} color="#00c3ff" />
-                    </div>
-                    <h1>Confirm your email</h1>
-                    <p>We've sent a magic link to your email address. Please click the link to verify your account.</p>
-                </div>
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-                <div className="confirm-body">
-                    <div className="instruction-item">
-                        <span className="step-number">1</span>
-                        <p>Open your email inbox</p>
-                    </div>
-                    <div className="instruction-item">
-                        <span className="step-number">2</span>
-                        <p>Click the <strong>Confirm Email</strong> button</p>
-                    </div>
-                    <div className="instruction-item">
-                        <span className="step-number">3</span>
-                        <p>Log in to your new dashboard</p>
-                    </div>
-                </div>
+  const handleResend = async () => {
+    setLoading(true);
+    setError(null);
 
-                <div className="confirm-footer">
-                    <Link href="/login" className="btn-back">
-                        <ArrowLeft size={18} />
-                        <span>Back to Login</span>
-                    </Link>
-                    <p className="resend-text">
-                        Didn't get the email? <button className="link-btn">Resend</button>
-                    </p>
-                </div>
-            </div>
+    const supabase = createClient();
+    // Since we don't store the email here after redirect, 
+    // in a real app we might pass it as a query param or keep in state.
+    // For now, let's try to get it from the URL or session if available.
+    const { data: { user } } = await supabase.auth.getUser();
 
-            <style jsx>{`
+    if (!user?.email) {
+      setError("Could not find your email. Please try signing up again.");
+      setLoading(false);
+      return;
+    }
+
+    const { error: resendError } = await supabase.auth.resend({
+      type: 'signup',
+      email: user.email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      }
+    });
+
+    if (resendError) {
+      setError(resendError.message);
+    } else {
+      setSent(true);
+      setTimeout(() => setSent(false), 5000);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="confirm-container">
+      <div className="confirm-box">
+        <div className="confirm-header">
+          <div className="icon-pulse">
+            <Mail size={48} color="#00c3ff" />
+          </div>
+          <h1>Confirm your email</h1>
+          <p>We've sent a magic link to your email address. Please click the link to verify your account.</p>
+        </div>
+
+        <div className="confirm-body">
+          <div className="instruction-item">
+            <span className="step-number">1</span>
+            <p>Open your email inbox</p>
+          </div>
+          <div className="instruction-item">
+            <span className="step-number">2</span>
+            <p>Click the <strong>Confirm Email</strong> button</p>
+          </div>
+          <div className="instruction-item">
+            <span className="step-number">3</span>
+            <p>Log in to your new dashboard</p>
+          </div>
+        </div>
+
+        <div className="confirm-footer">
+          <Link href="/login" className="btn-back">
+            <ArrowLeft size={18} />
+            <span>Back to Login</span>
+          </Link>
+          <p className="resend-text">
+            {sent ? (
+              <span style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                <CheckCircle2 size={16} /> Email resent! Check your inbox.
+              </span>
+            ) : (
+              <>
+                Didn't get the email?
+                <button
+                  className="link-btn"
+                  onClick={handleResend}
+                  disabled={loading}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                >
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : 'Resend'}
+                </button>
+              </>
+            )}
+          </p>
+          {error && <p style={{ color: '#f87171', fontSize: '0.8rem', marginTop: '0.5rem' }}>{error}</p>}
+        </div>
+      </div>
+
+      <style jsx>{`
         .confirm-container {
           min-height: 100vh;
           display: flex;
@@ -189,6 +245,6 @@ export default function ConfirmEmail() {
           text-decoration: underline;
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }
