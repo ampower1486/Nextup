@@ -92,11 +92,11 @@ export default function Login() {
       <footer className="app-footer">
         <div className="footer-section">
           <span>Powered by</span>
-          <img src="/conect-r-logo.png" alt="Conect-R" style={{ height: '48px', objectFit: 'contain' }} />
+          <img src="/conect-r-logo.png" alt="Conect-R" style={{ height: '24px', objectFit: 'contain', backgroundColor: 'white', padding: '2px 4px', borderRadius: '4px' }} />
         </div>
         <span className="footer-divider">|</span>
         <div className="footer-section">
-          <img src="/nextup_logo_3d.png" alt="Nextup" style={{ height: '56px', borderRadius: '8px', objectFit: 'contain' }} />
+          <img src="/nextup_logo_3d.png" alt="Nextup" style={{ height: '28px', borderRadius: '4px', objectFit: 'contain' }} />
           <span>Nextup is a product of Conect-R LLC</span>
         </div>
       </footer>
@@ -259,13 +259,14 @@ export default function Login() {
         /* Footer matching app/page.tsx */
         .app-footer {
           width: 100%;
-          padding: 1.5rem;
+          padding: 1.5rem 1rem;
           display: flex;
           justify-content: center;
           align-items: center;
-          gap: 2rem;
+          gap: 1.5rem;
+          flex-wrap: wrap;
           background-color: transparent;
-          font-size: 0.95rem;
+          font-size: 0.85rem;
           color: white;
         }
         .footer-section {
