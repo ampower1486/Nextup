@@ -160,7 +160,7 @@ export default function Home() {
         // Using .neq with a dummy UUID to target all rows (Supabase requires at least one filter for delete)
         const { error } = await supabase
             .from('waitlist_entries')
-            .update({ status: 'Archived' })
+            .delete()
             .neq('id', '00000000-0000-0000-0000-000000000000')
             .in('status', ['Waiting', 'Notified', 'Seated', 'No Show']);
 
