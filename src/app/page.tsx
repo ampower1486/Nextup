@@ -11,6 +11,9 @@ import { UtensilsCrossed, ClipboardList, Calendar, Clock, BarChart2, Settings, L
 interface Reservation {
     id: string;
     name: string;
+    phone_number?: string;
+    notes?: string;
+    created_at?: string;
     date_time: string;
     size: number;
 }
@@ -267,17 +270,25 @@ export default function Home() {
                                         <tr>
                                             <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>PARTY</th>
                                             <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SIZE</th>
+                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>DATE CREATED</th>
                                             <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>DATE & TIME</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {reservations.length === 0 ? (
-                                            <tr><td colSpan={3} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No reservations.</td></tr>
+                                            <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No reservations.</td></tr>
                                         ) : null}
                                         {reservations.map(res => (
                                             <tr key={res.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
-                                                <td style={{ padding: '1rem 2rem' }}><strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{res.name}</strong></td>
+                                                <td style={{ padding: '1rem 2rem' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                        <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{res.name}</strong>
+                                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{res.phone_number || 'No Phone'}</span>
+                                                        {res.notes && <span style={{ fontSize: '0.75rem', color: '#8b5cf6', marginTop: '2px', fontStyle: 'italic' }}>Note: {res.notes}</span>}
+                                                    </div>
+                                                </td>
                                                 <td style={{ padding: '1rem 2rem' }}><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{res.size}</span></td>
+                                                <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{res.created_at ? new Date(res.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-'}</td>
                                                 <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(res.date_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
                                             </tr>
                                         ))}
