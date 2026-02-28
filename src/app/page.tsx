@@ -890,9 +890,17 @@ export default function Home() {
         @media (max-width: 1024px) {
             .content-layout {
                 flex-direction: column;
+                overflow-y: auto;
+            }
+            .left-panel {
+                flex: none;
+                overflow-y: visible;
+                min-height: 500px;
             }
             .right-panel {
                 width: 100%;
+                flex: none;
+                overflow-y: visible;
                 border-left: none;
                 border-top: 1px solid var(--table-border);
             }
