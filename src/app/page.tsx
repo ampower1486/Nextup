@@ -23,6 +23,7 @@ export default function Home() {
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
     const [storeName, setStoreName] = useState('Loading...');
     const [userRole, setUserRole] = useState<'restaurant' | 'admin'>('restaurant');
     const [allProfiles, setAllProfiles] = useState<Record<string, string>>({});
@@ -114,6 +115,8 @@ export default function Home() {
                 () => { fetchEntries(); fetchPastEntries(); }
             )
             .subscribe();
+
+        setMounted(true);
 
         return () => { supabase.removeChannel(channel); };
     }, []);
@@ -238,7 +241,7 @@ export default function Home() {
             <main className="main-area">
                 <header className="top-header">
                     <div className="header-title">
-                        <span className="time-display">{new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                        <span className="time-display">{mounted ? new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}</span>
                         <h1>{storeName} {currentTab}</h1>
                     </div>
                     <div className="header-actions">
