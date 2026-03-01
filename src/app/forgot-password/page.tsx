@@ -4,66 +4,90 @@ import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 
 export default function ForgotPassword() {
-    const [email, setEmail] = useState('');
-    const [message, setMessage] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
-    const handleReset = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-        setMessage(null);
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cooldown > 0) return;
 
-        const supabase = createClient();
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    });
+
+    if (error) {
+      if (error.status === 429) {
+        setError("Email rate limit exceeded. Please wait a few minutes before trying again.");
+      } else {
+        setError(error.message);
+      }
+    } else {
+      setMessage('Password reset link sent! Check your email.');
+      setCooldown(60); // 60 seconds cooldown
+      const timer = setInterval(() => {
+        setCooldown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
         });
+      }, 1000);
+    }
+    setLoading(false);
+  };
 
-        if (error) {
-            setError(error.message);
-        } else {
-            setMessage('Password reset link sent! Check your email.');
-        }
-        setLoading(false);
-    };
+  return (
+    <div className="login-container">
+      <div className="login-box">
+        <div className="login-header">
+          <img src="/nextup_logo_3d.png" alt="Nextup" className="login-logo" />
+          <h1>Forgot Password</h1>
+          <p>Enter your email to receive a reset link.</p>
+        </div>
 
-    return (
-        <div className="login-container">
-            <div className="login-box">
-                <div className="login-header">
-                    <img src="/nextup_logo_3d.png" alt="Nextup" className="login-logo" />
-                    <h1>Forgot Password</h1>
-                    <p>Enter your email to receive a reset link.</p>
-                </div>
-
-                <form onSubmit={handleReset} className="login-form">
-                    {error && <div className="error-message">{error}</div>}
-                    {message && <div className="success-message">{message}</div>}
-
-                    <div className="form-group">
-                        <label htmlFor="email">Email</label>
-                        <input
-                            id="email"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            placeholder="you@restaurant.com"
-                        />
-                    </div>
-
-                    <button type="submit" disabled={loading} className="btn-login">
-                        {loading ? 'Sending...' : 'Send Reset Link'}
-                    </button>
-
-                    <div className="back-to-login">
-                        <a href="/login" className="forgot-password-link">Back to Login</a>
-                    </div>
-                </form>
+        <form onSubmit={handleReset} className="login-form">
+          {error && <div className="error-message">{error}</div>}
+          {message && (
+            <div className="success-message">
+              {message}
+              <div style={{ marginTop: '12px', padding: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '0.8rem', color: '#fff' }}>
+                <strong>Important:</strong> Please open the link in the <strong>same browser and device</strong> you are using right now.
+              </div>
             </div>
+          )}
 
-            <style jsx>{`
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="you@restaurant.com"
+            />
+          </div>
+
+          <button type="submit" disabled={loading || cooldown > 0} className="btn-login">
+            {loading ? 'Sending...' : cooldown > 0 ? `Wait ${cooldown}s` : 'Send Reset Link'}
+          </button>
+
+          <div className="back-to-login">
+            <a href="/login" className="forgot-password-link">Back to Login</a>
+          </div>
+        </form>
+      </div>
+
+      <style jsx>{`
         .login-container {
           min-height: 100vh;
           display: flex;
@@ -208,6 +232,6 @@ export default function ForgotPassword() {
           text-decoration: underline;
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

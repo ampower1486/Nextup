@@ -10,19 +10,16 @@ export async function GET(request: Request) {
     try {
         if (code) {
             const supabase = await createClient()
-            const { error } = await supabase.auth.exchangeCodeForSession(code)
-            if (!error) {
-                // Return to the absolute URL to ensure origin is correct
+            const { error, data } = await supabase.auth.exchangeCodeForSession(code)
+
+            if (!error && data.session) {
                 return NextResponse.redirect(`${requestUrl.origin}${next}`)
             }
-            console.error('Auth error in exchange:', error)
-        } else {
-            console.error('No code provided in callback')
         }
     } catch (err) {
-        console.error('Unexpected callback error:', err)
+        console.error('Callback error:', err)
     }
 
-    // Return to login with error if anything failed
-    return NextResponse.redirect(`${requestUrl.origin}/login?message=Authentication failed. Please try again or use a newer link.`)
+    const message = encodeURIComponent('Invalid or expired reset link. Please try again.')
+    return NextResponse.redirect(`${requestUrl.origin}/login?message=${message}`)
 }

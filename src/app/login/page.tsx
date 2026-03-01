@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 
 export default function Login() {
@@ -10,6 +11,14 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const msg = params.get('message');
+    if (msg) {
+      setError(msg);
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,10 +72,7 @@ export default function Login() {
           </div>
 
           <div className="form-group">
-            <div className="password-header">
-              <label htmlFor="nextup-password">Password</label>
-              <a href="/forgot-password" className="forgot-password-link">Forgot Password?</a>
-            </div>
+            <label htmlFor="nextup-password">Password</label>
             <input
               id="nextup-password"
               name="nextup-password-field"
@@ -83,8 +89,14 @@ export default function Login() {
             {loading ? 'Logging in...' : 'Sign In'}
           </button>
 
+          <div className="login-options">
+            <Link href="/forgot-password" className="forgot-password-link">
+              Forgot Password?
+            </Link>
+          </div>
+
           <div className="signup-footer">
-            <p>Don't have an account? <a href="/signup" className="forgot-password-link">Create one</a></p>
+            <p>Don't have an account? <Link href="/signup" className="forgot-password-link">Create one</Link></p>
           </div>
         </form>
       </div>
@@ -170,17 +182,17 @@ export default function Login() {
           font-weight: 500;
         }
 
-        .password-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+        .login-options {
+          text-align: center;
+          margin-top: 0.5rem;
         }
 
         .forgot-password-link {
           color: #00c3ff;
-          font-size: 0.8rem;
+          font-size: 0.9rem;
           text-decoration: none;
           transition: color 0.2s ease;
+          font-weight: 500;
         }
 
         .forgot-password-link:hover {

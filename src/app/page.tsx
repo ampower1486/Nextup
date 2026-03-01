@@ -105,16 +105,13 @@ export default function Home() {
                         setUserRole('admin');
                     } else {
                         setStoreName(rName || 'My Restaurant');
-                        // ONLY set role from DB if NOT already forced by email (prevents staff overwrite)
-                        if (!isForcedAdmin) {
-                            setUserRole(data.role as any);
-                        }
+                        setUserRole(data.role as any);
                     }
 
                     setRestaurantId(data.restaurant_id);
                     console.log("User role verified as:", (isForcedAdmin ? 'admin' : (data.role || 'unknown')));
 
-                    if (data.role === 'admin' || isForcedAdmin) {
+                    if (userRole === 'admin' || isForcedAdmin) {
                         // Fetch all profiles to map user_id to name and email
                         const { data: profiles } = await supabase
                             .from('profiles')
@@ -750,7 +747,7 @@ export default function Home() {
                             </div>
                         )}
 
-                        {currentTab === 'Admin' && (
+                        {currentTab === 'Admin' && effectiveAdmin && (
                             <div style={{ padding: '0 0 4rem' }}>
                                 <div style={{ borderBottom: '1px solid var(--table-border)', marginBottom: '2rem', padding: '2rem 2rem 1.5rem', background: '#f8fafc' }}>
                                     <h2 style={{ margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.75rem', color: 'var(--text-primary)' }}>Restaurant & System Management</h2>

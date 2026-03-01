@@ -13,21 +13,76 @@ export default function ResetPassword() {
   const router = useRouter();
 
   useEffect(() => {
-    const checkSession = async () => {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setError("Your password reset link is invalid or has expired. Please request a new one.");
+    const supabase = createClient();
+    let mounted = true;
+
+    const check = async () => {
+      console.log("Reset page: checking session...");
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s && mounted) {
+        console.log("Reset page: session found!");
+        setVerifying(false);
+        return true;
       }
-      setVerifying(false);
+      return false;
     };
-    checkSession();
+
+    // 1. Check for fragment/tokens in URL (Fallback for some flows)
+    if (typeof window !== 'undefined' && (window.location.hash || window.location.search.includes('access_token'))) {
+      console.log("Reset page: detected token in URL, attempting to set session...");
+      // Supabase client handles this automatically on init, but we can nudge it
+      supabase.auth.onAuthStateChange((event, session) => {
+        if (session && mounted) {
+          setVerifying(false);
+          setError(null);
+        }
+      });
+    }
+
+    // 2. Listen for auth state change
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Reset page auth event:", event, !!session);
+      if (session && mounted) {
+        setVerifying(false);
+        setError(null);
+      }
+    });
+
+    // 3. Poll aggressively for a few seconds
+    const poll = async () => {
+      for (let i = 0; i < 15; i++) { // Increased to 15 retries (7.5s total)
+        if (!mounted) break;
+        const found = await check();
+        if (found) {
+          subscription.unsubscribe();
+          return;
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+      if (mounted) {
+        setError("Could not verify your reset session. Hint: Are you using the same browser and device that requested the link? Password reset links often only work in the browser where they were requested.");
+        setVerifying(false);
+      }
+      subscription.unsubscribe();
+    };
+
+    poll();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       setError("Passwords don't match");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
       return;
     }
 
@@ -43,7 +98,9 @@ export default function ResetPassword() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push('/login?message=Password updated successfully');
+      // Sign out to force fresh login with new password
+      await supabase.auth.signOut();
+      router.push('/login?message=Password updated successfully. Please log in with your new password.');
     }
   };
 
@@ -57,7 +114,15 @@ export default function ResetPassword() {
         </div>
 
         <form onSubmit={handleUpdate} className="login-form">
-          {error && <div className="error-message">{error}</div>}
+          {error && (
+            <div className="error-message">
+              {error}
+              <br />
+              <a href="/forgot-password" style={{ color: '#00c3ff', textDecoration: 'underline', marginTop: '8px', display: 'inline-block' }}>
+                Request a new link
+              </a>
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="password">New Password</label>
@@ -83,8 +148,8 @@ export default function ResetPassword() {
             />
           </div>
 
-          <button type="submit" disabled={loading} className="btn-login">
-            {loading ? 'Updating...' : 'Update Password'}
+          <button type="submit" disabled={loading || verifying} className="btn-login">
+            {loading ? 'Updating...' : verifying ? 'Verifying Link...' : 'Update Password'}
           </button>
         </form>
       </div>

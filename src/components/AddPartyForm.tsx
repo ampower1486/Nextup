@@ -85,17 +85,6 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
                     <button className="btn-close-icon" onClick={onClose}><X size={24} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="add-party-form">
-                    {isAllAdmin && (
-                        <div className="form-group">
-                            <label>Assign to Restaurant</label>
-                            <select value={selectedRestaurantId} onChange={e => setSelectedRestaurantId(e.target.value)}>
-                                <option value="">-- Global / Unassigned --</option>
-                                {restaurants.map(r => (
-                                    <option key={r.id} value={r.id}>{r.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
                     <div className="form-group">
                         <label>Party Name</label>
                         <input
@@ -107,15 +96,27 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
                         />
                     </div>
                     <div className="form-group">
-                        <label>Size (1-99)</label>
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="e.g. 4"
-                            value={size}
-                            onChange={handleSizeChange}
-                            required
-                        />
+                        <label>Size</label>
+                        <div className="size-selector-grid">
+                            {[1, 2, 3, 4, 5, 6].map(num => (
+                                <button
+                                    type="button"
+                                    key={num}
+                                    className={`btn-size ${size === num.toString() ? 'selected' : ''}`}
+                                    onClick={() => setSize(num.toString())}
+                                >
+                                    {num}
+                                </button>
+                            ))}
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="Other"
+                                value={parseInt(size) > 6 || (size !== '' && !['1', '2', '3', '4', '5', '6'].includes(size)) ? size : ''}
+                                onChange={handleSizeChange}
+                                className={`input-size-other ${parseInt(size) > 6 || (size !== '' && !['1', '2', '3', '4', '5', '6'].includes(size)) ? 'selected-input' : ''}`}
+                            />
+                        </div>
                     </div>
                     <div className="form-group">
                         <label>Phone Number</label>
@@ -218,6 +219,42 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
             border-color: var(--btn-primary-bg);
             background-color: white;
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        .size-selector-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+        .btn-size {
+            background-color: #f8fafc;
+            border: 1px solid var(--table-border);
+            border-radius: 6px;
+            padding: 0.75rem 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-size:hover {
+            background-color: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+        .btn-size.selected {
+            background-color: var(--btn-primary-bg);
+            color: white;
+            border-color: var(--btn-primary-bg);
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        }
+        .input-size-other {
+            grid-column: span 2;
+            text-align: center;
+        }
+        .input-size-other.selected-input {
+            border-color: var(--btn-primary-bg);
+            background-color: white;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+            font-weight: bold;
         }
         .btn-add-submit {
           background-color: var(--btn-green);

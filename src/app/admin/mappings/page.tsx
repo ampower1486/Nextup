@@ -27,17 +27,42 @@ export default function AdminMappings() {
         const loadData = async () => {
             const supabase = createClient();
 
+            // Check session and role
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+
+            const isForcedAdmin = user.email === 'ampower14@icloud.com' || user.email === 'ampower1486@gmail.com';
+
+            if (profile?.role !== 'admin' && !isForcedAdmin) {
+                window.location.href = '/';
+                return;
+            }
+
             // Fetch Local
             const { data: localData } = await supabase.from('restaurants').select('id, name');
+
             // Fetch External via Proxy API
-            const res = await fetch('/api/external/restaurants');
-            const { restaurants: externalData } = await res.json();
+            try {
+                const res = await fetch('/api/external/restaurants');
+                const data = await res.json();
+                if (data.restaurants) setExternalRestos(data.restaurants);
+            } catch (err) {
+                console.error("Failed to fetch external restaurants:", err);
+            }
 
             // Fetch Existing Mappings
             const { data: mappingData } = await supabase.from('external_mappings').select('local_restaurant_id, external_restaurant_id');
 
             if (localData) setLocalRestos(localData);
-            if (externalData) setExternalRestos(externalData);
 
             if (mappingData) {
                 const map: Record<string, string> = {};
