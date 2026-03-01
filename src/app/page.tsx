@@ -105,11 +105,14 @@ export default function Home() {
                         setUserRole('admin');
                     } else {
                         setStoreName(rName || 'My Restaurant');
-                        setUserRole(data.role as any);
+                        // ONLY set role from DB if NOT already forced by email (prevents staff overwrite)
+                        if (!isForcedAdmin) {
+                            setUserRole(data.role as any);
+                        }
                     }
 
                     setRestaurantId(data.restaurant_id);
-                    console.log("User role verified as:", data.role || (isForcedAdmin ? 'admin' : 'unknown'));
+                    console.log("User role verified as:", (isForcedAdmin ? 'admin' : (data.role || 'unknown')));
 
                     if (data.role === 'admin' || isForcedAdmin) {
                         // Fetch all profiles to map user_id to name and email
@@ -232,6 +235,8 @@ export default function Home() {
 
         if (userRole !== 'admin' && restaurantId) {
             query = query.eq('restaurant_id', restaurantId);
+        } else if (userRole === 'admin' && restaurantId && restaurantId !== 'null') {
+            query = query.eq('restaurant_id', restaurantId);
         }
 
         const { data } = await query.order('created_at', { ascending: true });
@@ -247,6 +252,8 @@ export default function Home() {
             .or('status.eq.Seated,status.eq.No Show');
 
         if (userRole !== 'admin' && restaurantId) {
+            query = query.eq('restaurant_id', restaurantId);
+        } else if (userRole === 'admin' && restaurantId && restaurantId !== 'null') {
             query = query.eq('restaurant_id', restaurantId);
         }
 
@@ -368,9 +375,10 @@ export default function Home() {
                     created_at: r.created_at,
                     is_shared: r.is_shared
                 }));
-                // If not admin, filter only shared ones
-                const filtered = userRole === 'admin' ? mapped : mapped.filter(r => r.is_shared);
-                setReservations(filtered);
+                // STAFF visibility fix: If admin OR if they are at the correct restaurant, show ALL confirmed reservations
+                // We trust the restaurant_id filter above; if it's confirmed, staff should see it.
+                // Previously it filtered for is_shared, which hid unshared reservations from local staff.
+                setReservations(mapped);
                 return;
             }
         }
@@ -413,12 +421,26 @@ export default function Home() {
         await supabase.from('waitlist_entries').insert([{
             party_name: res.name,
             party_size: res.size,
+            phone_number: res.phone_number,
+            notes: res.notes,
             quoted_time: 0,
             status: 'Waiting',
             is_tableserve: true,
             restaurant_id: restaurantId,
             user_id: (await supabase.auth.getUser()).data.user?.id
         }]);
+
+        // Sync back to Tableserve: update reservation status to checked_in (or similar)
+        try {
+            const { externalSupabase } = await import('@/lib/external_supabase');
+            await externalSupabase
+                .from('reservations')
+                .update({ status: 'checked_in' })
+                .eq('id', res.id);
+        } catch (err) {
+            console.error("Tableserve sync-back error:", err);
+        }
+
         setReservations(prev => prev.filter(r => r.id !== res.id));
     }
     const effectiveAdmin = userRole === 'admin' || (authUserEmail === 'ampower14@icloud.com' || authUserEmail === 'ampower1486@gmail.com');
@@ -1172,25 +1194,25 @@ export default function Home() {
             position: relative;
         }
         .header-column-left {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            min-width: 0;
+            flex: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            min-width: 0 !important;
         }
         .header-column-center {
-            flex: 0 0 auto;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 350px; /* Fixed space for the massive clock */
+            flex: 0 0 auto !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            width: 350px !important; /* Fixed space for the massive clock */
         }
         .header-column-right {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            min-width: 0;
+            flex: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-end !important;
+            min-width: 0 !important;
         }
         .header-title {
             display: flex;
@@ -1207,14 +1229,14 @@ export default function Home() {
             white-space: nowrap;
         }
         .header-title h1 {
-            margin: 0;
-            font-size: 1.4rem;
-            font-weight: 800;
-            display: flex;
-            flex-direction: column; /* Stack name and breadcrumb to save horizontal space */
-            align-items: flex-start;
-            gap: 0;
-            line-height: 1.2;
+            margin: 0 !important;
+            font-size: 1.4rem !important;
+            font-weight: 800 !important;
+            display: flex !important;
+            flex-direction: column !important; /* Stack name and breadcrumb to save horizontal space */
+            align-items: flex-start !important;
+            gap: 0 !important;
+            line-height: 1.2 !important;
         }
         .header-title .breadcrumb {
             font-size: 0.9rem;
