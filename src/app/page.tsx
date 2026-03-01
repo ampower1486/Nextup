@@ -329,6 +329,8 @@ export default function Home() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        if (!restaurantId) return;
+
         // 2. Fetch external reservations if mapped
         const { data: mapping } = await supabase
             .from('external_mappings')
@@ -1155,7 +1157,8 @@ export default function Home() {
             align-items: center;
             gap: 1.5rem;
             flex: 1;
-            padding-right: 15vw; /* Create space for the large central clock */
+            max-width: 35%; /* Ensure title doesn't reach the large central clock */
+            overflow: hidden;
         }
         .time-display {
             position: absolute;
@@ -1192,7 +1195,7 @@ export default function Home() {
             gap: 1.5rem;
             flex: 1;
             justify-content: flex-end;
-            padding-left: 15vw; /* Create space for the large central clock */
+            max-width: 35%; /* Ensure actions don't reach the large central clock */
         }
         .search-container {
             display: flex;
