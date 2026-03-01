@@ -1,82 +1,95 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
 export default function ResetPassword() {
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-    const router = useRouter();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(true);
+  const router = useRouter();
 
-    const handleUpdate = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (password !== confirmPassword) {
-            setError("Passwords don't match");
-            return;
-        }
-
-        setLoading(true);
-        setError(null);
-
-        const supabase = createClient();
-        const { error } = await supabase.auth.updateUser({
-            password: password,
-        });
-
-        if (error) {
-            setError(error.message);
-            setLoading(false);
-        } else {
-            router.push('/login?message=Password updated successfully');
-        }
+  useEffect(() => {
+    const checkSession = async () => {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError("Your password reset link is invalid or has expired. Please request a new one.");
+      }
+      setVerifying(false);
     };
+    checkSession();
+  }, []);
 
-    return (
-        <div className="login-container">
-            <div className="login-box">
-                <div className="login-header">
-                    <img src="/nextup_logo_3d.png" alt="Nextup" className="login-logo" />
-                    <h1>Reset Password</h1>
-                    <p>Enter your new password below.</p>
-                </div>
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      setError("Passwords don't match");
+      return;
+    }
 
-                <form onSubmit={handleUpdate} className="login-form">
-                    {error && <div className="error-message">{error}</div>}
+    setLoading(true);
+    setError(null);
 
-                    <div className="form-group">
-                        <label htmlFor="password">New Password</label>
-                        <input
-                            id="password"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            placeholder="••••••••"
-                        />
-                    </div>
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({
+      password: password,
+    });
 
-                    <div className="form-group">
-                        <label htmlFor="confirmPassword">Confirm New Password</label>
-                        <input
-                            id="confirmPassword"
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            required
-                            placeholder="••••••••"
-                        />
-                    </div>
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    } else {
+      router.push('/login?message=Password updated successfully');
+    }
+  };
 
-                    <button type="submit" disabled={loading} className="btn-login">
-                        {loading ? 'Updating...' : 'Update Password'}
-                    </button>
-                </form>
-            </div>
+  return (
+    <div className="login-container">
+      <div className="login-box">
+        <div className="login-header">
+          <img src="/nextup_logo_3d.png" alt="Nextup" className="login-logo" />
+          <h1>Reset Password</h1>
+          <p>Enter your new password below.</p>
+        </div>
 
-            <style jsx>{`
+        <form onSubmit={handleUpdate} className="login-form">
+          {error && <div className="error-message">{error}</div>}
+
+          <div className="form-group">
+            <label htmlFor="password">New Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder="••••••••"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="confirmPassword">Confirm New Password</label>
+            <input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              placeholder="••••••••"
+            />
+          </div>
+
+          <button type="submit" disabled={loading} className="btn-login">
+            {loading ? 'Updating...' : 'Update Password'}
+          </button>
+        </form>
+      </div>
+
+      <style jsx>{`
         .login-container {
           min-height: 100vh;
           display: flex;
@@ -194,6 +207,6 @@ export default function ResetPassword() {
           text-align: center;
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

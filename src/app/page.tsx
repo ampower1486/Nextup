@@ -1110,7 +1110,7 @@ export default function Home() {
                                 ) : (
                                     <div style={{ textAlign: 'center' }}>
                                         <p style={{ color: '#dc2626', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                                            this action can not be undone and all info will be erased.
+                                            This action can not be undone and all info will be erased
                                         </p>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                                             <button
