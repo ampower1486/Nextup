@@ -304,17 +304,15 @@ export default function Home() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const { externalSupabase } = await import('@/lib/external_supabase');
-            const { data, error } = await externalSupabase.from('restaurants').select('id, name').order('name');
-
-            if (error) {
-                console.error("[System] Error fetching external restaurants:", error);
+            const res = await fetch("/api/external/restaurants");
+            const data = await res.json();
+            if (data.error) {
+                console.error("[System] Error fetching external restaurants:", data.error);
                 return;
             }
-
-            if (data) {
-                console.log("[System] Fetched external restaurants:", data.length);
-                setExternalRestaurants(data);
+            if (data.restaurants) {
+                console.log("[System] Fetched external restaurants:", data.restaurants.length);
+                setExternalRestaurants(data.restaurants);
             }
         } catch (err) {
             console.error("[System] Crash in fetchExternalRestaurants:", err);
