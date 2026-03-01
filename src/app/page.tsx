@@ -300,13 +300,25 @@ export default function Home() {
     };
 
     async function fetchExternalRestaurants() {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
 
-        // Use dynamic import for external client to avoid SSR issues if any
-        const { externalSupabase } = await import('@/lib/external_supabase');
-        const { data } = await externalSupabase.from('restaurants').select('id, name').order('name');
-        if (data) setExternalRestaurants(data);
+            const { externalSupabase } = await import('@/lib/external_supabase');
+            const { data, error } = await externalSupabase.from('restaurants').select('id, name').order('name');
+
+            if (error) {
+                console.error("[System] Error fetching external restaurants:", error);
+                return;
+            }
+
+            if (data) {
+                console.log("[System] Fetched external restaurants:", data.length);
+                setExternalRestaurants(data);
+            }
+        } catch (err) {
+            console.error("[System] Crash in fetchExternalRestaurants:", err);
+        }
     }
 
     async function fetchExternalMappings() {
@@ -322,10 +334,10 @@ export default function Home() {
         const { error } = await supabase
             .from('external_mappings')
             .upsert({
-                user_id: userId,
+                local_restaurant_id: restaurantId || null,
                 external_restaurant_id: externalRestId,
                 external_restaurant_name: restName
-            }, { onConflict: 'user_id' });
+            }, { onConflict: 'external_restaurant_id' }); // Conflict on external ID ensures we don't duplicate external links
 
         if (!error) {
             fetchExternalMappings();
@@ -337,35 +349,38 @@ export default function Home() {
         if (!user) return;
 
         console.log("[System] fetchReservations called. restaurantId:", restaurantId);
-        if (!restaurantId || restaurantId === 'null' || restaurantId === null) {
-            console.log("[System] fetchReservations aborted: restaurantId is falsy");
-            return;
-        }
-
         // 2. Fetch external reservations if mapped
-        const { data: mapping, error: mapError } = await supabase
+        const { data: mappings, error: mapError } = await supabase
             .from('external_mappings')
             .select('external_restaurant_id')
-            .eq('local_restaurant_id', restaurantId)
-            .maybeSingle();
+            .eq('local_restaurant_id', restaurantId);
+
+        console.log("[System] Found mappings for restaurant:", mappings?.length || 0);
 
         if (mapError) {
             console.error("Error fetching mapping for reservations:", mapError);
             return;
         }
 
-        if (mapping?.external_restaurant_id) {
+        if (mappings && mappings.length > 0) {
             const { externalSupabase } = await import('@/lib/external_supabase');
-            const { data: extRes, error } = await externalSupabase
-                .from('reservations')
-                .select('*')
-                .eq('restaurant_id', mapping.external_restaurant_id)
-                .eq('status', 'confirmed') // Only confirmed ones
-                .order('date', { ascending: true });
+            const allExtRes: any[] = [];
 
-            if (!error && extRes) {
-                // 3. Map to our Reservation interface
-                const mapped: Reservation[] = extRes.map(r => ({
+            for (const mapping of mappings) {
+                const { data: extRes, error } = await externalSupabase
+                    .from('reservations')
+                    .select('*')
+                    .eq('restaurant_id', mapping.external_restaurant_id)
+                    .eq('status', 'confirmed')
+                    .order('date', { ascending: true });
+
+                if (!error && extRes) {
+                    allExtRes.push(...extRes);
+                }
+            }
+
+            if (allExtRes.length > 0) {
+                const mapped: Reservation[] = allExtRes.map(r => ({
                     id: r.id,
                     name: r.guest_name,
                     size: r.party_size,
@@ -375,9 +390,8 @@ export default function Home() {
                     created_at: r.created_at,
                     is_shared: r.is_shared
                 }));
-                // STAFF visibility fix: If admin OR if they are at the correct restaurant, show ALL confirmed reservations
-                // We trust the restaurant_id filter above; if it's confirmed, staff should see it.
-                // Previously it filtered for is_shared, which hid unshared reservations from local staff.
+                // Sort combined reservations by date/time
+                mapped.sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime());
                 setReservations(mapped);
                 return;
             }
@@ -917,7 +931,20 @@ export default function Home() {
                                                             </div>
                                                             {isLinked ? null : (
                                                                 <button
-                                                                    onClick={() => { /* Mapping is now auto-handled */ }}
+                                                                    onClick={async () => {
+                                                                        const matched = allRestaurants.find(r => r.name.toLowerCase().includes(ext.name.toLowerCase()) || ext.name.toLowerCase().includes(r.name.toLowerCase()));
+                                                                        if (matched) {
+                                                                            await supabase.from('external_mappings').insert({
+                                                                                local_restaurant_id: matched.id,
+                                                                                external_restaurant_id: ext.id,
+                                                                                external_restaurant_name: ext.name
+                                                                            });
+                                                                            fetchExternalMappings();
+                                                                            fetchReservations();
+                                                                        } else {
+                                                                            alert("Could not find a matching local restaurant for " + ext.name);
+                                                                        }
+                                                                    }}
                                                                     style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#1e293b', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}
                                                                 >
                                                                     Auto-Link
