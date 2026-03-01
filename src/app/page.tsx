@@ -329,14 +329,19 @@ export default function Home() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        if (!restaurantId) return;
+        if (!restaurantId || restaurantId === 'null') return;
 
         // 2. Fetch external reservations if mapped
-        const { data: mapping } = await supabase
+        const { data: mapping, error: mapError } = await supabase
             .from('external_mappings')
             .select('external_restaurant_id')
             .eq('local_restaurant_id', restaurantId)
             .maybeSingle();
+
+        if (mapError) {
+            console.error("Error fetching mapping for reservations:", mapError);
+            return;
+        }
 
         if (mapping?.external_restaurant_id) {
             const { externalSupabase } = await import('@/lib/external_supabase');
@@ -456,28 +461,36 @@ export default function Home() {
 
             <main className="main-area">
                 <header className="top-header">
-                    <span className="time-display">{mounted ? new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}</span>
-                    <div className="header-title">
-                        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <span style={{ color: '#3b82f6', fontSize: '2rem', fontWeight: '800' }}>{storeName}</span>
-                            <span style={{ color: '#3b82f6', fontWeight: '800' }}>»</span>
-                            <span>{currentTab}</span>
-                        </h1>
-                        {effectiveAdmin && (
-                            <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: '700', marginLeft: '0.5rem', border: '1px solid #10b981', padding: '1px 5px', borderRadius: '4px' }}>
-                                ADMIN ACTIVE
-                            </span>
-                        )}
-                    </div>
-                    <div className="header-actions">
-                        <div className="search-container">
-                            <input type="text" placeholder="Search parties" />
-                            <Search size={16} color="#888" />
+                    <div className="header-column-left">
+                        <div className="header-title">
+                            <h1>
+                                <span style={{ color: '#3b82f6', fontSize: '2rem', fontWeight: '800' }}>{storeName}</span>
+                                <span style={{ color: '#3b82f6', fontWeight: '800' }}>»</span>
+                                <span>{currentTab}</span>
+                            </h1>
+                            {effectiveAdmin && (
+                                <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: '700', marginLeft: '0.5rem', border: '1px solid #10b981', padding: '1px 5px', borderRadius: '4px' }}>
+                                    ADMIN ACTIVE
+                                </span>
+                            )}
                         </div>
-                        <button className="btn-add-party-header banana-btn-glow" onClick={() => setIsAddOpen(true)}>
-                            <Plus size={18} strokeWidth={3} />
-                            <span>Add Party</span>
-                        </button>
+                    </div>
+
+                    <div className="header-column-center">
+                        <span className="time-display">{mounted ? new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}</span>
+                    </div>
+
+                    <div className="header-column-right">
+                        <div className="header-actions">
+                            <div className="search-container">
+                                <input type="text" placeholder="Search parties" />
+                                <Search size={16} color="#888" />
+                            </div>
+                            <button className="btn-add-party-header banana-btn-glow" onClick={() => setIsAddOpen(true)}>
+                                <Plus size={18} strokeWidth={3} />
+                                <span>Add Party</span>
+                            </button>
+                        </div>
                     </div>
                 </header>
 
@@ -1152,25 +1165,40 @@ export default function Home() {
             height: 150px;
             position: relative;
         }
+        .header-column-left {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            min-width: 0;
+        }
+        .header-column-center {
+            flex: 0 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 350px; /* Fixed space for the massive clock */
+        }
+        .header-column-right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            min-width: 0;
+        }
         .header-title {
             display: flex;
             align-items: center;
             gap: 1.5rem;
-            flex: 1;
-            max-width: 35%; /* Ensure title doesn't reach the large central clock */
+            min-width: 0;
             overflow: hidden;
         }
         .time-display {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
             font-weight: 800;
-            font-size: 3.5rem; /* Slightly larger to be exactly 2x of original 1.5rem + 0.5rem bump */
+            font-size: 3.5rem;
             color: #fff;
             text-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
             white-space: nowrap;
-            z-index: 5;
         }
         .header-title h1 {
             margin: 0;
@@ -1181,6 +1209,8 @@ export default function Home() {
             align-items: center;
             gap: 0.75rem;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .waitlist-count {
             background-color: rgba(255,255,255,0.2);
@@ -1193,9 +1223,6 @@ export default function Home() {
             display: flex;
             align-items: center;
             gap: 1.5rem;
-            flex: 1;
-            justify-content: flex-end;
-            max-width: 35%; /* Ensure actions don't reach the large central clock */
         }
         .search-container {
             display: flex;
