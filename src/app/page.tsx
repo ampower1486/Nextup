@@ -785,7 +785,7 @@ export default function Home() {
                                                      if (!data.error) alert("Connection Successful! TableServe proxy is communicating. Found " + (data.restaurants?.length || 0) + " restaurants.");
                                                      else alert("Connection Failed: " + data.error);
                                                  } catch (e) {
-                                                     alert("Connection Error: " + e.message);
+                                                     alert("Connection Error: " + (e as any).message);
                                                  }
                                              }}
                                             style={{
