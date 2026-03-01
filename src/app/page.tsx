@@ -19,6 +19,7 @@ interface Reservation {
     date_time: string;
     size: number;
     is_shared?: boolean;
+    local_restaurant_id?: string;
 }
 
 const supabase = createClient();
@@ -60,14 +61,6 @@ export default function Home() {
                 setAuthUserEmail(email || null);
                 console.log("[System] Logged in user:", email);
 
-                // IMMEDIATE FAIL-SAFE: Enforce admin role for verified emails BEFORE DB fetch
-                let isForcedAdmin = false;
-                if (email === 'ampower14@icloud.com' || email === 'ampower1486@gmail.com') {
-                    console.log("[System] Admin Fail-Safe Active for:", email);
-                    setUserRole('admin');
-                    isForcedAdmin = true;
-                }
-
                 const { data, error } = await supabase
                     .from('profiles')
                     .select('role, restaurant_id, restaurants(name)')
@@ -76,42 +69,42 @@ export default function Home() {
 
                 if (error) {
                     console.error("Profile fetch error:", error);
-                    if (isForcedAdmin) {
-                        setUserRole('admin');
-                        setStoreName('System Admin (Fail-safe)');
-                        fetchRestaurants();
-                    } else {
-                        setUserRole('staff');
-                        setStoreName('My Restaurant');
-                    }
+                    setUserRole('staff');
+                    setStoreName('My Restaurant');
                     return;
                 }
 
                 if (data) {
-                    console.log("Profile data fetched successfully:", data);
+                    let actualRole = data.role;
+                    // Fallback only if profile has strictly no role
+                    if (!actualRole && (email === 'ampower14@icloud.com' || email === 'ampower1486@gmail.com')) {
+                        actualRole = 'admin';
+                    } else if (!actualRole) {
+                        actualRole = 'staff';
+                    }
+
+                    console.log("Profile data fetched successfully, Role:", actualRole);
                     const r = data.restaurants;
                     let rName = Array.isArray(r) ? r[0]?.name : (r as any)?.name;
 
-                    // Fallback to fetch FIRST restaurant name if admin and unassigned
-                    if ((data.role === 'admin' || isForcedAdmin) && !rName) {
+                    if (actualRole === 'admin' && !rName) {
                         const { data: allRestos } = await supabase.from('restaurants').select('name').limit(1);
                         if (allRestos && allRestos.length > 0) {
                             rName = allRestos[0].name;
                         }
                     }
 
-                    if (data.role === 'admin' || isForcedAdmin) {
+                    if (actualRole === 'admin') {
                         setStoreName(rName || 'System Admin');
                         setUserRole('admin');
                     } else {
                         setStoreName(rName || 'My Restaurant');
-                        setUserRole(data.role as any);
+                        setUserRole(actualRole as any);
                     }
 
-                    setRestaurantId(data.restaurant_id);
-                    console.log("User role verified as:", (isForcedAdmin ? 'admin' : (data.role || 'unknown')));
+                    setRestaurantId(data.restaurant_id || null);
 
-                    if (userRole === 'admin' || isForcedAdmin) {
+                    if (actualRole === 'admin') {
                         // Fetch all profiles to map user_id to name and email
                         const { data: profiles } = await supabase
                             .from('profiles')
@@ -215,7 +208,11 @@ export default function Home() {
             )
             .subscribe();
 
-        return () => { supabase.removeChannel(channel); };
+        const reservationInterval = setInterval(() => {
+            fetchReservations();
+        }, 10000); // Poll Tableserve reservations every 10 seconds for real-time appearance
+
+        return () => { supabase.removeChannel(channel); clearInterval(reservationInterval); };
     }, [restaurantId, userRole, mounted]);
 
     useEffect(() => {
@@ -368,20 +365,20 @@ export default function Home() {
 
         console.log("[System] fetchReservations called. restaurantId:", restaurantId);
 
-        // 1. Safety check to avoid 22P02 invalid UUID error if restaurantId is null string or empty
-        if (!restaurantId || restaurantId === 'null') {
-            console.log("[System] No restaurant ID for reservations, returning empty.");
-            setReservations([]);
-            return;
+        let mapQuery = supabase.from('external_mappings').select('local_restaurant_id, external_restaurant_id');
+
+        if (userRole !== 'admin') {
+            if (!restaurantId || restaurantId === 'null') {
+                setReservations([]);
+                return;
+            }
+            mapQuery = mapQuery.eq('local_restaurant_id', restaurantId);
+        } else if (restaurantId && restaurantId !== 'null') {
+            // Admin assigned to a specific
+            mapQuery = mapQuery.eq('local_restaurant_id', restaurantId);
         }
 
-        // 2. Fetch external reservations if mapped
-        const { data: mappings, error: mapError } = await supabase
-            .from('external_mappings')
-            .select('external_restaurant_id')
-            .eq('local_restaurant_id', restaurantId);
-
-        console.log("[System] Found mappings for restaurant:", mappings?.length || 0);
+        const { data: mappings, error: mapError } = await mapQuery;
 
         if (mapError) {
             console.error("Error fetching mapping for reservations:", mapError);
@@ -389,14 +386,25 @@ export default function Home() {
         }
 
         if (mappings && mappings.length > 0) {
-            const allExtRes: any[] = [];
+            const allExtRes: Reservation[] = [];
 
             for (const mapping of mappings) {
                 try {
                     const res = await fetch(`/api/tableserve?restaurant_id=${mapping.external_restaurant_id}`);
                     const data = await res.json();
                     if (data.reservations) {
-                        allExtRes.push(...data.reservations);
+                        const mapped: Reservation[] = data.reservations.map((r: any) => ({
+                            id: r.id,
+                            name: r.guest_name,
+                            size: r.party_size,
+                            date_time: `${r.date}T${convertToIsoTime(r.time_slot)}`,
+                            phone_number: r.guest_phone,
+                            notes: r.notes,
+                            created_at: r.created_at,
+                            is_shared: r.is_shared,
+                            local_restaurant_id: mapping.local_restaurant_id
+                        }));
+                        allExtRes.push(...mapped);
                     }
                 } catch (err) {
                     console.error("Error fetching proxy reservations:", err);
@@ -404,24 +412,13 @@ export default function Home() {
             }
 
             if (allExtRes.length > 0) {
-                const mapped: Reservation[] = allExtRes.map(r => ({
-                    id: r.id,
-                    name: r.guest_name,
-                    size: r.party_size,
-                    date_time: `${r.date}T${convertToIsoTime(r.time_slot)}`,
-                    phone_number: r.guest_phone,
-                    notes: r.notes,
-                    created_at: r.created_at,
-                    is_shared: r.is_shared
-                }));
                 // Sort combined reservations by date/time
-                mapped.sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime());
-                setReservations(mapped);
+                allExtRes.sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime());
+                setReservations(allExtRes);
                 return;
             }
         }
 
-        // NO FALLBACK - if no mappings, it's empty
         setReservations([]);
     }
 
@@ -450,8 +447,10 @@ export default function Home() {
     }
 
     async function handleCheckIn(res: Reservation) {
-        if (!restaurantId) {
-            alert("No restaurant assigned to your profile.");
+        let assignedRestaurantId = res.local_restaurant_id || restaurantId;
+
+        if (!assignedRestaurantId) {
+            alert("No restaurant assigned to this reservation.");
             return;
         }
 
@@ -463,7 +462,7 @@ export default function Home() {
             quoted_time: 0,
             status: 'Waiting',
             is_tableserve: true,
-            restaurant_id: restaurantId,
+            restaurant_id: assignedRestaurantId,
             user_id: (await supabase.auth.getUser()).data.user?.id
         }]);
 
@@ -480,7 +479,7 @@ export default function Home() {
 
         setReservations(prev => prev.filter(r => r.id !== res.id));
     }
-    const effectiveAdmin = (userRole === 'admin') || (authUserEmail === 'ampower14@icloud.com' || authUserEmail === 'ampower1486@gmail.com');
+    const effectiveAdmin = (userRole === 'admin');
 
     return (
         <div className="app-container">
