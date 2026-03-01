@@ -411,14 +411,15 @@ export default function Home() {
     async function toggleShareReservation(resId: string, currentStatus: boolean) {
         if (userRole !== 'admin') return;
 
-        const { externalSupabase } = await import('@/lib/external_supabase');
-        const { error } = await externalSupabase
-            .from('reservations')
-            .update({ is_shared: !currentStatus })
-            .eq('id', resId);
-
-        if (!error) {
-            fetchReservations();
+        try {
+            const res = await fetch('/api/external/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'toggle-share', resId, isShared: !currentStatus })
+            });
+            if (res.ok) fetchReservations();
+        } catch (err) {
+            console.error("Error toggling share via proxy:", err);
         }
     }
 
