@@ -226,17 +226,32 @@ export default function Home() {
     }, []);
 
     async function fetchEntries() {
-        if (!restaurantId && userRole !== 'admin') return;
+        // Enforce isolation: If no restaurant ID and not global admin, return empty immediately
+        if (!restaurantId && userRole !== 'admin') {
+            setEntries([]);
+            return;
+        }
 
         let query = supabase
             .from('waitlist_entries')
             .select('*')
             .in('status', ['Waiting', 'Notified']);
 
-        if (userRole !== 'admin' && restaurantId) {
+        // RESTRICTIVE FILTERING: 
+        if (userRole !== 'admin') {
+            // Staff and Restaurant roles MUST have a restaurantId
+            if (restaurantId) {
+                query = query.eq('restaurant_id', restaurantId);
+            } else {
+                setEntries([]);
+                return;
+            }
+        } else if (restaurantId && restaurantId !== 'null') {
+            // Admin viewing a specific restaurant
             query = query.eq('restaurant_id', restaurantId);
-        } else if (userRole === 'admin' && restaurantId && restaurantId !== 'null') {
-            query = query.eq('restaurant_id', restaurantId);
+        } else {
+            // Admin viewing ALL (Global view)
+            // No extra filter
         }
 
         const { data } = await query.order('created_at', { ascending: true });
@@ -244,16 +259,24 @@ export default function Home() {
     }
 
     async function fetchPastEntries() {
-        if (!restaurantId && userRole !== 'admin') return;
+        if (!restaurantId && userRole !== 'admin') {
+            setPastEntries([]);
+            return;
+        }
 
         let query = supabase
             .from('waitlist_entries')
             .select('*')
             .or('status.eq.Seated,status.eq.No Show');
 
-        if (userRole !== 'admin' && restaurantId) {
-            query = query.eq('restaurant_id', restaurantId);
-        } else if (userRole === 'admin' && restaurantId && restaurantId !== 'null') {
+        if (userRole !== 'admin') {
+            if (restaurantId) {
+                query = query.eq('restaurant_id', restaurantId);
+            } else {
+                setPastEntries([]);
+                return;
+            }
+        } else if (restaurantId && restaurantId !== 'null') {
             query = query.eq('restaurant_id', restaurantId);
         }
 
@@ -393,10 +416,8 @@ export default function Home() {
             }
         }
 
-        // Fallback to mock/internal if no mapping or error
-        const res = await fetch('/api/tableserve');
-        const data = await res.json();
-        setReservations(data.reservations || []);
+        // NO FALLBACK - if no mappings, it's empty
+        setReservations([]);
     }
 
     function convertToIsoTime(timeSlot: string) {
@@ -454,7 +475,7 @@ export default function Home() {
 
         setReservations(prev => prev.filter(r => r.id !== res.id));
     }
-    const effectiveAdmin = userRole === 'admin' || (authUserEmail === 'ampower14@icloud.com' || authUserEmail === 'ampower1486@gmail.com');
+    const effectiveAdmin = (userRole === 'admin') || (authUserEmail === 'ampower14@icloud.com' || authUserEmail === 'ampower1486@gmail.com');
 
     return (
         <div className="app-container">
@@ -778,16 +799,16 @@ export default function Home() {
                                         </Link>
 
                                         <button
-                                             onClick={async () => {
-                                                 try {
-                                                     const res = await fetch("/api/external/restaurants");
-                                                     const data = await res.json();
-                                                     if (!data.error) alert("Connection Successful! TableServe proxy is communicating. Found " + (data.restaurants?.length || 0) + " restaurants.");
-                                                     else alert("Connection Failed: " + data.error);
-                                                 } catch (e) {
-                                                     alert("Connection Error: " + (e as any).message);
-                                                 }
-                                             }}
+                                            onClick={async () => {
+                                                try {
+                                                    const res = await fetch("/api/external/restaurants");
+                                                    const data = await res.json();
+                                                    if (!data.error) alert("Connection Successful! TableServe proxy is communicating. Found " + (data.restaurants?.length || 0) + " restaurants.");
+                                                    else alert("Connection Failed: " + data.error);
+                                                } catch (e) {
+                                                    alert("Connection Error: " + (e as any).message);
+                                                }
+                                            }}
                                             style={{
                                                 padding: '0.85rem 1.5rem',
                                                 backgroundColor: '#8b5cf6',
@@ -820,7 +841,7 @@ export default function Home() {
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Active Users</span>
                                     </div>
                                     <div className="metric-card banana-glow banana-orange" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--table-border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                        <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{externalRestaurants.length}</span>
+                                        <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{externalMappings.length}</span>
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Tablereserve Links</span>
                                     </div>
                                 </div>
