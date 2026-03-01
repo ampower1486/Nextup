@@ -26,12 +26,13 @@ export default function AdminMappings() {
     useEffect(() => {
         const loadData = async () => {
             const supabase = createClient();
-            const { externalSupabase } = await import('@/lib/external_supabase');
 
             // Fetch Local
             const { data: localData } = await supabase.from('restaurants').select('id, name');
-            // Fetch External
-            const { data: externalData } = await externalSupabase.from('restaurants').select('id, name');
+            // Fetch External via Proxy API
+            const res = await fetch('/api/external/restaurants');
+            const { restaurants: externalData } = await res.json();
+
             // Fetch Existing Mappings
             const { data: mappingData } = await supabase.from('external_mappings').select('local_restaurant_id, external_restaurant_id');
 

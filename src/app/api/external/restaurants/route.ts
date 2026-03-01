@@ -1,15 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-export async function GET(req: Request) {
+export async function GET() {
     try {
-        const { searchParams } = new URL(req.url);
-        const externalRestId = searchParams.get('restaurant_id');
-
-        if (!externalRestId) {
-            return NextResponse.json({ error: 'Missing restaurant_id' }, { status: 400 });
-        }
-
         const supabaseUrl = process.env.EXTERNAL_SUPABASE_URL || process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_URL;
         const supabaseKey = process.env.EXTERNAL_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_ANON_KEY;
 
@@ -18,18 +11,13 @@ export async function GET(req: Request) {
         }
 
         const externalSupabase = createClient(supabaseUrl, supabaseKey);
-        const { data, error } = await externalSupabase
-            .from('reservations')
-            .select('*')
-            .eq('restaurant_id', externalRestId)
-            .eq('status', 'confirmed')
-            .order('date', { ascending: true });
+        const { data, error } = await externalSupabase.from('restaurants').select('id, name').order('name');
 
         if (error) throw error;
 
-        return NextResponse.json({ reservations: data || [] });
+        return NextResponse.json({ restaurants: data || [] });
     } catch (error: any) {
-        console.error('API Tableserve Error:', error);
+        console.error('API External Restaurants Error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

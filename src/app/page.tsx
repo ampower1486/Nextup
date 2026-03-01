@@ -363,19 +363,17 @@ export default function Home() {
         }
 
         if (mappings && mappings.length > 0) {
-            const { externalSupabase } = await import('@/lib/external_supabase');
             const allExtRes: any[] = [];
 
             for (const mapping of mappings) {
-                const { data: extRes, error } = await externalSupabase
-                    .from('reservations')
-                    .select('*')
-                    .eq('restaurant_id', mapping.external_restaurant_id)
-                    .eq('status', 'confirmed')
-                    .order('date', { ascending: true });
-
-                if (!error && extRes) {
-                    allExtRes.push(...extRes);
+                try {
+                    const res = await fetch(`/api/tableserve?restaurant_id=${mapping.external_restaurant_id}`);
+                    const data = await res.json();
+                    if (data.reservations) {
+                        allExtRes.push(...data.reservations);
+                    }
+                } catch (err) {
+                    console.error("Error fetching proxy reservations:", err);
                 }
             }
 
