@@ -22,35 +22,70 @@ export async function POST(request: Request) {
             );
         }
 
-        // 1. Auto-Sync Restaurant: Ensure it exists in the restaurants table
-        const { data: restaurant, error: fetchErr } = await supabaseAdmin
-            .from('restaurants')
-            .select('*')
-            .eq('tableserve_id', tsId)
+        // 1. Resolve Local Restaurant via Mappings first
+        const { data: mapping } = await supabaseAdmin
+            .from('external_mappings')
+            .select('local_restaurant_id')
+            .eq('external_restaurant_id', tsId)
             .single();
 
+        let finalLocalId = mapping?.local_restaurant_id;
         let finalUserId = null;
 
-        if (fetchErr && fetchErr.code === 'PGRST116') {
+        // 2. Fallback to direct tableserve_id on restaurants table if no mapping found
+        if (!finalLocalId) {
+            const { data: restaurant } = await supabaseAdmin
+                .from('restaurants')
+                .select('id, linked_user_id')
+                .eq('tableserve_id', tsId)
+                .single();
+
+            if (restaurant) {
+                finalLocalId = restaurant.id;
+                finalUserId = restaurant.linked_user_id;
+            }
+        } else {
+            // Mapping found, get the linked user for this restaurant
+            const { data: restaurant } = await supabaseAdmin
+                .from('restaurants')
+                .select('linked_user_id')
+                .eq('id', finalLocalId)
+                .single();
+            if (restaurant) finalUserId = restaurant.linked_user_id;
+        }
+
+        // 3. Auto-Sync/Create if still not found
+        if (!finalLocalId) {
             // Restaurant doesn't exist, create it (Auto-sync)
-            await supabaseAdmin.from('restaurants').insert([{
+            const slug = (restaurant_name || 'New TableServe Restaurant')
+                .toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^\w\-]+/g, '')
+                .replace(/\-\-+/g, '-')
+                .replace(/^-+/, '')
+                .replace(/-+$/, '') + '-' + Math.random().toString(36).substring(2, 7);
+
+            const { data: newRest, error: createError } = await supabaseAdmin.from('restaurants').insert([{
                 tableserve_id: tsId,
-                name: restaurant_name || 'New TableServe Restaurant'
-            }]);
-        } else if (restaurant) {
-            finalUserId = restaurant.linked_user_id;
-            // Update name if it changed
-            if (restaurant_name && restaurant.name !== restaurant_name) {
-                await supabaseAdmin.from('restaurants').update({ name: restaurant_name }).eq('tableserve_id', tsId);
+                name: restaurant_name || 'New TableServe Restaurant',
+                slug
+            }]).select().single();
+
+            if (!createError && newRest) {
+                finalLocalId = newRest.id;
+                finalUserId = null;
+                // Also create mapping so it shows in polling
+                await supabaseAdmin.from('external_mappings').insert([{
+                    local_restaurant_id: newRest.id,
+                    external_restaurant_id: tsId,
+                    external_restaurant_name: restaurant_name || 'New TableServe Restaurant'
+                }]);
             }
         }
 
         // 2. Insert the incoming reservation
-        // Even if finalUserId is null (unassigned), we insert it so Admin can see it. 
-        // We might want a default or null user_id for unassigned entries.
-        // For now, if unassigned, we'll store it but it won't appear for any specific restaurant users.
         const { data, error } = await supabaseAdmin.from('waitlist_entries').insert([{
-            user_id: finalUserId, // This will be null if unassigned
+            user_id: finalUserId,
             party_name,
             party_size: parseInt(party_size, 10),
             phone_number: phone_number || null,
@@ -58,7 +93,7 @@ export async function POST(request: Request) {
             quoted_time: 0,
             status: 'Waiting',
             is_tableserve: true,
-            restaurant_id: tsId // We should probably add this to waitlist_entries too for easier tracking
+            restaurant_id: finalLocalId
         }]).select();
 
         if (error) {

@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import AddPartyForm from '@/components/AddPartyForm';
 import WaitlistTable from '@/components/WaitlistTable';
+import CreateRestaurantForm from '@/components/CreateRestaurantForm';
 import { WaitlistEntry } from '@/lib/supabase';
 import { createClient } from '@/utils/supabase/client';
-import { UtensilsCrossed, ClipboardList, Calendar, Clock, BarChart2, Settings, LogOut, Search, Plus } from 'lucide-react';
+import { UtensilsCrossed, ClipboardList, Calendar, Clock, BarChart2, Settings, LogOut, Search, Plus, ArrowLeftRight, ShieldAlert, Globe } from 'lucide-react';
 
 interface Reservation {
     id: string;
@@ -16,7 +18,10 @@ interface Reservation {
     created_at?: string;
     date_time: string;
     size: number;
+    is_shared?: boolean;
 }
+
+const supabase = createClient();
 
 export default function Home() {
     const router = useRouter();
@@ -29,51 +34,129 @@ export default function Home() {
     const [externalMappings, setExternalMappings] = useState<{ user_id: string, external_restaurant_id: string, external_restaurant_name: string }[]>([]);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [isCreateRestoOpen, setIsCreateRestoOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const [storeName, setStoreName] = useState('Loading...');
-    const [userRole, setUserRole] = useState<'restaurant' | 'admin'>('restaurant');
-    const [allProfiles, setAllProfiles] = useState<Record<string, string>>({});
-    const [profilesList, setProfilesList] = useState<{ id: string, name: string }[]>([]);
-    const [allRestaurants, setAllRestaurants] = useState<{ id: string, tableserve_id: string, linked_user_id: string | null, name: string }[]>([]);
+    const [storeName, setStoreName] = useState('!!! REFRESH BROWSER NOW !!!');
+    const [restaurantId, setRestaurantId] = useState<string | null>(null);
+    const [userRole, setUserRole] = useState<'restaurant' | 'admin' | 'staff'>('restaurant');
+    const [allProfiles, setAllProfiles] = useState<Record<string, { name: string, email: string, role: string, restaurant_id: string }>>({});
+    const [profilesList, setProfilesList] = useState<{ id: string, name: string, email: string, role: string, restaurant_id: string }[]>([]);
+    const [allRestaurants, setAllRestaurants] = useState<{ id: string, name: string }[]>([]);
     const [defaultSmsMessage, setDefaultSmsMessage] = useState('Your table is ready! Please head to the host stand.');
+    const [authUserEmail, setAuthUserEmail] = useState<string | null>(null);
     const [isResetConfirming, setIsResetConfirming] = useState(false);
-    const supabase = createClient();
 
     useEffect(() => {
         const getProfile = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data } = await supabase
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    setStoreName('Guest');
+                    setAuthUserEmail(null);
+                    return;
+                }
+
+                const email = user.email?.toLowerCase();
+                setAuthUserEmail(email || null);
+                console.log("[System] Logged in user:", email);
+
+                // IMMEDIATE FAIL-SAFE: Enforce admin role for verified emails BEFORE DB fetch
+                let isForcedAdmin = false;
+                if (email === 'ampower14@icloud.com' || email === 'ampower1486@gmail.com') {
+                    console.log("[System] Admin Fail-Safe Active for:", email);
+                    setUserRole('admin');
+                    isForcedAdmin = true;
+                }
+
+                const { data, error } = await supabase
                     .from('profiles')
-                    .select('restaurant_name, role')
+                    .select('role, restaurant_id, restaurants(name)')
                     .eq('id', user.id)
                     .single();
-                if (data) {
-                    setStoreName(data.restaurant_name || 'My Restaurant');
-                    setUserRole(data.role as any);
 
-                    if (data.role === 'admin') {
-                        // Fetch all profiles to map user_id to name
-                        const { data: profiles } = await supabase.from('profiles').select('id, restaurant_name');
+                if (error) {
+                    console.error("Profile fetch error:", error);
+                    if (isForcedAdmin) {
+                        setUserRole('admin');
+                        setStoreName('System Admin (Fail-safe)');
+                        fetchRestaurants();
+                    } else {
+                        setUserRole('staff');
+                        setStoreName('My Restaurant');
+                    }
+                    return;
+                }
+
+                if (data) {
+                    console.log("Profile data fetched successfully:", data);
+                    const r = data.restaurants;
+                    let rName = Array.isArray(r) ? r[0]?.name : (r as any)?.name;
+
+                    // Fallback to fetch FIRST restaurant name if admin and unassigned
+                    if ((data.role === 'admin' || isForcedAdmin) && !rName) {
+                        const { data: allRestos } = await supabase.from('restaurants').select('name').limit(1);
+                        if (allRestos && allRestos.length > 0) {
+                            rName = allRestos[0].name;
+                        }
+                    }
+
+                    if (data.role === 'admin' || isForcedAdmin) {
+                        setStoreName(rName || 'System Admin');
+                        setUserRole('admin');
+                    } else {
+                        setStoreName(rName || 'My Restaurant');
+                        setUserRole(data.role as any);
+                    }
+
+                    setRestaurantId(data.restaurant_id);
+                    console.log("User role verified as:", data.role || (isForcedAdmin ? 'admin' : 'unknown'));
+
+                    if (data.role === 'admin' || isForcedAdmin) {
+                        // Fetch all profiles to map user_id to name and email
+                        const { data: profiles } = await supabase
+                            .from('profiles')
+                            .select('id, full_name, email, role, restaurant_id, restaurants(name)');
+
                         if (profiles) {
-                            const mapping: Record<string, string> = {};
-                            const list: { id: string, name: string }[] = [];
+                            const mapping: Record<string, { name: string, email: string, role: string, restaurant_id: string }> = {};
+                            const list: { id: string, name: string, email: string, role: string, restaurant_id: string }[] = [];
                             profiles.forEach(p => {
-                                mapping[p.id] = p.restaurant_name || 'Unknown';
-                                list.push({ id: p.id, name: p.restaurant_name || 'Unknown' });
+                                const displayName = p.full_name || p.email || 'Unknown';
+                                mapping[p.id] = {
+                                    name: displayName,
+                                    email: (p.email || '').toLowerCase(),
+                                    role: p.role || 'restaurant',
+                                    restaurant_id: p.restaurant_id || ''
+                                };
+                                list.push({
+                                    id: p.id,
+                                    name: displayName,
+                                    email: (p.email || '').toLowerCase(),
+                                    role: p.role || 'restaurant',
+                                    restaurant_id: p.restaurant_id || ''
+                                });
                             });
                             setAllProfiles(mapping);
                             setProfilesList(list);
                         }
 
-                        // Fetch restaurant mappings
+                        // Fetch restaurant list
                         fetchRestaurants();
                     }
                 }
+            } catch (err) {
+                console.error("Unexpected error in getProfile:", err);
+                setStoreName('Error loading');
             }
         };
         getProfile();
-    }, [supabase]);
+
+        // Safety timeout to ensure Loading... goes away
+        const timer = setTimeout(() => {
+            setStoreName(prev => prev === 'Loading...' ? 'My Restaurant' : prev);
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, []);
 
     async function fetchRestaurants() {
         const { data } = await supabase.from('restaurants').select('*').order('created_at', { ascending: false });
@@ -109,6 +192,9 @@ export default function Home() {
     };
 
     useEffect(() => {
+        if (!mounted) return;
+        if (!restaurantId && userRole !== 'admin') return;
+
         fetchEntries();
         fetchPastEntries();
         fetchReservations();
@@ -122,29 +208,49 @@ export default function Home() {
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'waitlist_entries' },
-                () => { fetchEntries(); fetchPastEntries(); }
+                () => {
+                    fetchEntries();
+                    fetchPastEntries();
+                }
             )
             .subscribe();
 
-        setMounted(true);
-
         return () => { supabase.removeChannel(channel); };
+    }, [restaurantId, userRole, mounted]);
+
+    useEffect(() => {
+        setMounted(true);
     }, []);
 
     async function fetchEntries() {
-        const { data } = await supabase
+        if (!restaurantId && userRole !== 'admin') return;
+
+        let query = supabase
             .from('waitlist_entries')
             .select('*')
-            .in('status', ['Waiting', 'Notified'])
-            .order('created_at', { ascending: true });
+            .in('status', ['Waiting', 'Notified']);
+
+        if (userRole !== 'admin' && restaurantId) {
+            query = query.eq('restaurant_id', restaurantId);
+        }
+
+        const { data } = await query.order('created_at', { ascending: true });
         if (data) setEntries(data as WaitlistEntry[]);
     }
 
     async function fetchPastEntries() {
-        const { data, error } = await supabase
+        if (!restaurantId && userRole !== 'admin') return;
+
+        let query = supabase
             .from('waitlist_entries')
             .select('*')
-            .or('status.eq.Seated,status.eq.No Show')
+            .or('status.eq.Seated,status.eq.No Show');
+
+        if (userRole !== 'admin' && restaurantId) {
+            query = query.eq('restaurant_id', restaurantId);
+        }
+
+        const { data, error } = await query
             .order('created_at', { ascending: false })
             .limit(50);
 
@@ -223,15 +329,14 @@ export default function Home() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // 1. Check if user has an external mapping
+        // 2. Fetch external reservations if mapped
         const { data: mapping } = await supabase
             .from('external_mappings')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
+            .select('external_restaurant_id')
+            .eq('local_restaurant_id', restaurantId)
+            .maybeSingle();
 
-        if (mapping) {
-            // 2. Fetch from external Supabase
+        if (mapping?.external_restaurant_id) {
             const { externalSupabase } = await import('@/lib/external_supabase');
             const { data: extRes, error } = await externalSupabase
                 .from('reservations')
@@ -249,9 +354,12 @@ export default function Home() {
                     date_time: `${r.date}T${convertToIsoTime(r.time_slot)}`,
                     phone_number: r.guest_phone,
                     notes: r.notes,
-                    created_at: r.created_at
+                    created_at: r.created_at,
+                    is_shared: r.is_shared
                 }));
-                setReservations(mapped);
+                // If not admin, filter only shared ones
+                const filtered = userRole === 'admin' ? mapped : mapped.filter(r => r.is_shared);
+                setReservations(filtered);
                 return;
             }
         }
@@ -271,9 +379,25 @@ export default function Home() {
         return `${hours.padStart(2, '0')}:${minutes}:00`;
     }
 
+    async function toggleShareReservation(resId: string, currentStatus: boolean) {
+        if (userRole !== 'admin') return;
+
+        const { externalSupabase } = await import('@/lib/external_supabase');
+        const { error } = await externalSupabase
+            .from('reservations')
+            .update({ is_shared: !currentStatus })
+            .eq('id', resId);
+
+        if (!error) {
+            fetchReservations();
+        }
+    }
+
     async function handleCheckIn(res: Reservation) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!restaurantId) {
+            alert("No restaurant assigned to your profile.");
+            return;
+        }
 
         await supabase.from('waitlist_entries').insert([{
             party_name: res.name,
@@ -281,10 +405,12 @@ export default function Home() {
             quoted_time: 0,
             status: 'Waiting',
             is_tableserve: true,
-            user_id: user.id
+            restaurant_id: restaurantId,
+            user_id: (await supabase.auth.getUser()).data.user?.id
         }]);
         setReservations(prev => prev.filter(r => r.id !== res.id));
     }
+    const effectiveAdmin = userRole === 'admin' || (authUserEmail === 'ampower14@icloud.com' || authUserEmail === 'ampower1486@gmail.com');
 
     return (
         <div className="app-container">
@@ -309,16 +435,16 @@ export default function Home() {
                         <div className="icon-wrapper banana-glow banana-green"><BarChart2 size={22} strokeWidth={2} /></div>
                         <span>Analytics</span>
                     </a>
-                    {userRole === 'admin' && (
-                        <a href="#" className={`nav-item ${currentTab === 'Admin' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setCurrentTab('Admin'); }}>
-                            <div className="icon-wrapper banana-glow banana-orange"><Settings size={22} strokeWidth={2} /></div>
-                            <span>Global Admin</span>
-                        </a>
-                    )}
                     <a href="#" className="nav-item" onClick={(e) => { e.preventDefault(); setIsSettingsOpen(true); }}>
                         <div className="icon-wrapper banana-glow banana-gray"><Settings size={22} strokeWidth={2} /></div>
                         <span>Settings</span>
                     </a>
+                    {effectiveAdmin && (
+                        <a href="#" className={`nav-item ${currentTab === 'Admin' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setCurrentTab('Admin'); }}>
+                            <div className="icon-wrapper banana-glow-urgent banana-orange-pulse"><ShieldAlert size={22} strokeWidth={3} /></div>
+                            <span style={{ fontWeight: 900, color: '#f97316' }}>GLOBAL ADMIN</span>
+                        </a>
+                    )}
                     <a href="#" className="nav-item nav-logout" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
                         <div className="icon-wrapper banana-glow banana-red"><LogOut size={22} strokeWidth={2} /></div>
                         <span>Logout</span>
@@ -328,9 +454,18 @@ export default function Home() {
 
             <main className="main-area">
                 <header className="top-header">
+                    <span className="time-display">{mounted ? new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}</span>
                     <div className="header-title">
-                        <span className="time-display">{mounted ? new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}</span>
-                        <h1>{storeName} {currentTab}</h1>
+                        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span style={{ color: '#3b82f6', fontSize: '2rem', fontWeight: '800' }}>{storeName}</span>
+                            <span style={{ color: '#3b82f6', fontWeight: '800' }}>»</span>
+                            <span>{currentTab}</span>
+                        </h1>
+                        {effectiveAdmin && (
+                            <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: '700', marginLeft: '0.5rem', border: '1px solid #10b981', padding: '1px 5px', borderRadius: '4px' }}>
+                                ADMIN ACTIVE
+                            </span>
+                        )}
                     </div>
                     <div className="header-actions">
                         <div className="search-container">
@@ -398,6 +533,7 @@ export default function Home() {
                                             <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SIZE</th>
                                             <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>DATE CREATED</th>
                                             <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>DATE & TIME</th>
+                                            {userRole === 'admin' && <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SHARED</th>}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -434,6 +570,25 @@ export default function Home() {
                                                     <td style={{ padding: '1rem 2rem' }}><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{res.size}</span></td>
                                                     <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{res.created_at ? new Date(res.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-'}</td>
                                                     <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(res.date_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                                                    {userRole === 'admin' && (
+                                                        <td style={{ padding: '1rem 2rem' }}>
+                                                            <button
+                                                                onClick={() => toggleShareReservation(res.id, !!res.is_shared)}
+                                                                style={{
+                                                                    padding: '0.4rem 0.8rem',
+                                                                    borderRadius: '8px',
+                                                                    border: 'none',
+                                                                    background: res.is_shared ? '#dcfce7' : '#fee2e2',
+                                                                    color: res.is_shared ? '#166534' : '#991b1b',
+                                                                    fontWeight: '600',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '0.75rem'
+                                                                }}
+                                                            >
+                                                                {res.is_shared ? 'SHARED' : 'HIDDEN'}
+                                                            </button>
+                                                        </td>
+                                                    )}
                                                 </tr>
                                             ))}
                                     </tbody>
@@ -514,89 +669,169 @@ export default function Home() {
 
                         {currentTab === 'Admin' && (
                             <div style={{ padding: '0 0 4rem' }}>
-                                <div style={{ borderBottom: '1px solid var(--table-border)', marginBottom: '2rem' }}>
-                                    <h2 style={{ padding: '2rem 2rem 0.5rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Global Waitlist Management</h2>
-                                    <p style={{ padding: '0 2rem 1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Viewing all active entries across all restaurant accounts.</p>
+                                <div style={{ borderBottom: '1px solid var(--table-border)', marginBottom: '2rem', padding: '2rem 2rem 1.5rem', background: '#f8fafc' }}>
+                                    <h2 style={{ margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.75rem', color: 'var(--text-primary)' }}>Restaurant & System Management</h2>
+                                    <p style={{ margin: '0.5rem 0 1.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Create restaurants and connect them to external reservation systems.</p>
+
+                                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                        <button
+                                            onClick={() => setIsCreateRestoOpen(true)}
+                                            style={{
+                                                padding: '0.85rem 1.5rem',
+                                                backgroundColor: '#10b981',
+                                                color: 'white',
+                                                borderRadius: '10px',
+                                                fontSize: '1rem',
+                                                fontWeight: '800',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.6rem',
+                                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                            onMouseOut={(e) => e.currentTarget.style.transform = 'none'}
+                                        >
+                                            <UtensilsCrossed size={20} />
+                                            + Add New Restaurant
+                                        </button>
+
+                                        <Link
+                                            href="/admin/mappings"
+                                            style={{
+                                                padding: '0.85rem 1.5rem',
+                                                backgroundColor: '#3b82f6',
+                                                color: 'white',
+                                                borderRadius: '10px',
+                                                fontSize: '1rem',
+                                                fontWeight: '800',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.6rem',
+                                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                                                textDecoration: 'none',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                            onMouseOut={(e) => e.currentTarget.style.transform = 'none'}
+                                        >
+                                            <ArrowLeftRight size={20} />
+                                            Manage Reservation Mappings
+                                        </Link>
+
+                                        <button
+                                            onClick={async () => {
+                                                const { externalSupabase } = await import('@/lib/external_supabase');
+                                                const { data, error } = await externalSupabase.from('restaurants').select('count');
+                                                if (!error) alert('Connection Successful! TableServe project is communicating.');
+                                                else alert('Connection Failed: ' + error.message);
+                                            }}
+                                            style={{
+                                                padding: '0.85rem 1.5rem',
+                                                backgroundColor: '#8b5cf6',
+                                                color: 'white',
+                                                borderRadius: '10px',
+                                                fontSize: '1rem',
+                                                fontWeight: '800',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.6rem',
+                                                boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            <Globe size={20} />
+                                            Test TableServe Sync
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginBottom: '4rem' }}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>RESTAURANT</th>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>PARTY</th>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SIZE</th>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>STATUS</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {entries.length === 0 ? (
-                                            <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No active entries found.</td></tr>
-                                        ) : null}
-                                        {entries.map(entry => (
-                                            <tr key={entry.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
-                                                <td style={{ padding: '1rem 2rem' }}>
-                                                    <strong style={{ color: entry.user_id ? '#00c3ff' : '#64748b' }}>
-                                                        {entry.user_id ? (allProfiles[entry.user_id] || 'Loading...') : 'Unassigned (Webhook)'}
-                                                    </strong>
-                                                </td>
-                                                <td style={{ padding: '1rem 2rem' }}>
-                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                        <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{entry.party_name}</strong>
-                                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{entry.phone_number || 'No Phone'}</span>
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '1rem 2rem' }}><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{entry.party_size}</span></td>
-                                                <td style={{ padding: '1rem 2rem' }}>
-                                                    <span style={{
-                                                        padding: '4px 8px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold',
-                                                        backgroundColor: entry.status === 'Notified' ? '#dcfce7' : '#f1f5f9',
-                                                        color: entry.status === 'Notified' ? '#166534' : '#475569'
-                                                    }}>
-                                                        {entry.status}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                <div style={{ padding: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                                    <div className="metric-card banana-glow banana-blue" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--table-border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{allRestaurants.length}</span>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Total Stores</span>
+                                    </div>
+                                    <div className="metric-card banana-glow banana-green" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--table-border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{profilesList.length}</span>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Active Users</span>
+                                    </div>
+                                    <div className="metric-card banana-glow banana-orange" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--table-border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{externalRestaurants.length}</span>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Tablereserve Links</span>
+                                    </div>
+                                </div>
 
-                                <div style={{ borderTop: '4px solid var(--table-border)', paddingTop: '2rem' }}>
-                                    <h2 style={{ padding: '0 2rem 0.5rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>TableServe Restaurant Mapping</h2>
-                                    <p style={{ padding: '0 2rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Assign synced TableServe restaurants to registered Nextup accounts.</p>
+
+                                <div style={{ borderTop: '4px solid var(--table-border)', paddingTop: '2rem', marginBottom: '4rem' }}>
+                                    <h2 style={{ padding: '0 2rem 0.5rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Staff Management & Restaurant Assignment</h2>
+                                    <p style={{ padding: '0 2rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Assign staff and admins to restaurants.</p>
 
                                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                         <thead>
                                             <tr>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>TABLESERVE ID</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>DISPLAY NAME</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>LINKED NEXTUP ACCOUNT</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>STAFF / ADMIN</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>EMAIL</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>ROLE</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>ASSIGNED RESTAURANT</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {allRestaurants.length === 0 ? (
-                                                <tr><td colSpan={3} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No restaurants synced yet. Send a reservation from TableServe to see them here.</td></tr>
+                                            {profilesList.length === 0 ? (
+                                                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No profiles found.</td></tr>
                                             ) : null}
-                                            {allRestaurants.map(rest => (
-                                                <tr key={rest.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
-                                                    <td style={{ padding: '1.25rem 2rem' }}><code style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem' }}>{rest.tableserve_id}</code></td>
-                                                    <td style={{ padding: '1.25rem 2rem' }}><strong style={{ color: 'var(--text-primary)' }}>{rest.name}</strong></td>
+                                            {profilesList.map(profile => (
+                                                <tr key={profile.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
+                                                    <td style={{ padding: '1.25rem 2rem' }}><strong style={{ color: 'var(--text-primary)' }}>{profile.name}</strong></td>
+                                                    <td style={{ padding: '1.25rem 2rem' }}><span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{profile.email}</span></td>
                                                     <td style={{ padding: '1.25rem 2rem' }}>
                                                         <select
-                                                            value={rest.linked_user_id || ''}
-                                                            onChange={(e) => linkRestaurant(rest.tableserve_id, e.target.value)}
+                                                            value={profile.role || 'restaurant'}
+                                                            onChange={async (e) => {
+                                                                const newRole = e.target.value;
+                                                                const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', profile.id);
+                                                                if (!error) window.location.reload();
+                                                            }}
+                                                            style={{
+                                                                padding: '0.4rem 0.8rem',
+                                                                borderRadius: '8px',
+                                                                border: '1px solid var(--table-border)',
+                                                                background: '#fff',
+                                                                fontSize: '0.85rem',
+                                                                fontWeight: '600',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            <option value="restaurant">Restaurant</option>
+                                                            <option value="staff">Staff</option>
+                                                            <option value="admin">Admin</option>
+                                                        </select>
+                                                    </td>
+                                                    <td style={{ padding: '1.25rem 2rem' }}>
+                                                        <select
+                                                            value={profile.restaurant_id || ''}
+                                                            onChange={async (e) => {
+                                                                const resId = e.target.value || null;
+                                                                await supabase.from('profiles').update({ restaurant_id: resId }).eq('id', profile.id);
+                                                                window.location.reload();
+                                                            }}
                                                             style={{
                                                                 padding: '0.5rem 1rem',
                                                                 borderRadius: '8px',
                                                                 border: '1px solid var(--table-border)',
-                                                                background: rest.linked_user_id ? '#f0f9ff' : '#fff7ed',
-                                                                color: rest.linked_user_id ? '#0369a1' : '#c2410c',
+                                                                background: '#fff',
                                                                 fontWeight: '600',
                                                                 cursor: 'pointer'
                                                             }}
                                                         >
                                                             <option value="">-- Unassigned --</option>
-                                                            {profilesList.map(profile => (
-                                                                <option key={profile.id} value={profile.id}>{profile.name}</option>
+                                                            {allRestaurants.map(r => (
+                                                                <option key={r.id} value={r.id}>{r.name}</option>
                                                             ))}
                                                         </select>
                                                     </td>
@@ -607,83 +842,86 @@ export default function Home() {
                                 </div>
 
                                 <div style={{ borderTop: '4px solid var(--table-border)', paddingTop: '2rem' }}>
-                                    <h2 style={{ padding: '0 2rem 0.5rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>External Restaurant Mapping</h2>
-                                    <p style={{ padding: '0 2rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Link local Nextup users to restaurants from the external project.</p>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2rem 1.5rem' }}>
+                                        <div>
+                                            <h2 style={{ margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>External Connections</h2>
+                                            <p style={{ margin: '0.2rem 0 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Linked to the Tablereserve project.</p>
+                                        </div>
+                                    </div>
 
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                        <thead>
-                                            <tr>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>NEXTUP USER</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>EXTERNAL RESTAURANT</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {profilesList.length === 0 ? (
-                                                <tr><td colSpan={2} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No users found.</td></tr>
-                                            ) : null}
-                                            {profilesList.map(profile => {
-                                                const mapping = externalMappings.find(m => m.user_id === profile.id);
-                                                return (
-                                                    <tr key={profile.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
-                                                        <td style={{ padding: '1.25rem 2rem' }}><strong style={{ color: 'var(--text-primary)' }}>{profile.name}</strong></td>
-                                                        <td style={{ padding: '1.25rem 2rem' }}>
-                                                            <select
-                                                                value={mapping?.external_restaurant_id || ''}
-                                                                onChange={(e) => linkExternalRestaurant(profile.id, e.target.value)}
-                                                                style={{
-                                                                    padding: '0.5rem 1rem',
-                                                                    borderRadius: '8px',
-                                                                    border: '1px solid var(--table-border)',
-                                                                    background: mapping ? '#f0f9ff' : '#fff7ed',
-                                                                    color: mapping ? '#0369a1' : '#c2410c',
-                                                                    fontWeight: '600',
-                                                                    cursor: 'pointer',
-                                                                    width: '100%',
-                                                                    maxWidth: '300px'
-                                                                }}
-                                                            >
-                                                                <option value="">-- No External Restaurant linked --</option>
-                                                                {externalRestaurants.map(ext => (
-                                                                    <option key={ext.id} value={ext.id}>{ext.name}</option>
-                                                                ))}
-                                                            </select>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
+                                    <div style={{ padding: '0 2rem' }}>
+                                        <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+                                            <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', color: '#1e293b' }}>Linked Restaurants ({externalMappings.length})</h3>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                                                {externalRestaurants.map(ext => {
+                                                    const isLinked = externalMappings.some(m => m.external_restaurant_id === ext.id);
+                                                    return (
+                                                        <div key={ext.id} style={{
+                                                            padding: '1rem',
+                                                            borderRadius: '12px',
+                                                            background: 'white',
+                                                            border: '1px solid #f1f5f9',
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center',
+                                                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                                        }}>
+                                                            <div>
+                                                                <strong style={{ display: 'block', color: '#0f172a' }}>{ext.name}</strong>
+                                                                <span style={{ fontSize: '0.75rem', color: isLinked ? '#10b981' : '#f59e0b', fontWeight: '600' }}>
+                                                                    {isLinked ? '● Connected' : '● Not Connected'}
+                                                                </span>
+                                                            </div>
+                                                            {isLinked ? null : (
+                                                                <button
+                                                                    onClick={() => { /* Mapping is now auto-handled */ }}
+                                                                    style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#1e293b', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}
+                                                                >
+                                                                    Auto-Link
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                                {externalRestaurants.length === 0 && (
+                                                    <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#64748b' }}>No external restaurants found.</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    <aside className="right-panel">
-                        <div className="side-card">
-                            <h3 style={{ textAlign: 'center' }}>Incoming Reservations</h3>
-                            <div className="integration-logo" style={{ justifyContent: 'center' }}>
-                                <div className="logo-circle">
-                                    <UtensilsCrossed size={14} color="white" strokeWidth={2.5} />
-                                </div>
-                                <span className="logo-text">Tablereserve</span>
-                            </div>
-                            <div className="reservation-list">
-                                {reservations.length === 0 && <p style={{ color: '#888', fontStyle: 'italic', fontSize: '0.9rem' }}>No incoming reservations.</p>}
-                                {reservations.map(res => (
-                                    <div key={res.id} className="reservation-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div className="res-info" style={{ flex: 1, minWidth: 0, paddingRight: '0.5rem' }}>
-                                            <strong style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{res.name}</span>
-                                                <span style={{ flexShrink: 0, color: '#3b82f6', fontSize: '0.85rem' }}>({res.size} Guests)</span>
-                                            </strong>
-                                            <span style={{ color: '#64748b', display: 'block' }}>{new Date(res.date_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                        </div>
-                                        <button onClick={() => handleCheckIn(res)} className="btn-checkin" style={{ flexShrink: 0 }}>Check-in</button>
+                    {currentTab !== 'Admin' && (
+                        <aside className="right-panel">
+                            <div className="side-card">
+                                <h3 style={{ textAlign: 'center' }}>Incoming Reservations</h3>
+                                <div className="integration-logo" style={{ justifyContent: 'center' }}>
+                                    <div className="logo-circle">
+                                        <UtensilsCrossed size={14} color="white" strokeWidth={2.5} />
                                     </div>
-                                ))}
+                                    <span className="logo-text">Tablereserve</span>
+                                </div>
+                                <div className="reservation-list">
+                                    {reservations.length === 0 && <p style={{ color: '#888', fontStyle: 'italic', fontSize: '0.9rem' }}>No incoming reservations.</p>}
+                                    {reservations.map(res => (
+                                        <div key={res.id} className="reservation-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div className="res-info" style={{ flex: 1, minWidth: 0, paddingRight: '0.5rem' }}>
+                                                <strong style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{res.name}</span>
+                                                    <span style={{ flexShrink: 0, color: '#3b82f6', fontSize: '0.85rem' }}>({res.size} Guests)</span>
+                                                </strong>
+                                                <span style={{ color: '#64748b', display: 'block' }}>{new Date(res.date_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                            <button onClick={() => handleCheckIn(res)} className="btn-checkin" style={{ flexShrink: 0 }}>Check-in</button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    </aside>
+                        </aside>
+                    )}
                 </div>
 
                 <footer className="app-footer">
@@ -699,94 +937,110 @@ export default function Home() {
                 </footer>
             </main>
 
-            {isAddOpen && <AddPartyForm onClose={() => setIsAddOpen(false)} />}
+            {isAddOpen && <AddPartyForm
+                onClose={() => setIsAddOpen(false)}
+                onCreated={() => {
+                    fetchEntries();
+                    setIsAddOpen(false);
+                }}
+                restaurantId={restaurantId}
+                isAllAdmin={userRole === 'admin'}
+            />}
 
-            {
-                isSettingsOpen && (
-                    <div className="modal-overlay" onClick={() => setIsSettingsOpen(false)}>
-                        <div className="modal-content" onClick={e => e.stopPropagation()}>
-                            <h2>Settings</h2>
-                            <div className="settings-section">
-                                <label>Store Name</label>
-                                <input
-                                    type="text"
-                                    value={storeName}
-                                    onChange={(e) => setStoreName(e.target.value)}
-                                    className="settings-input"
-                                />
+            {isCreateRestoOpen && (
+                <CreateRestaurantForm
+                    onClose={() => setIsCreateRestoOpen(false)}
+                    onCreated={() => {
+                        window.location.reload();
+                    }}
+                />
+            )}
 
-                                <label>Default Quote Time</label>
-                                <select className="settings-input" defaultValue="15">
-                                    {Array.from({ length: 36 }, (_, i) => (i + 1) * 5).map(min => (
-                                        <option key={min} value={min}>
-                                            {min >= 60 ? `${Math.floor(min / 60)} hr ${min % 60 > 0 ? min % 60 + ' min' : ''}`.trim() : `${min} min`}
-                                        </option>
-                                    ))}
-                                </select>
+            {isSettingsOpen && (
+                <div className="modal-overlay" onClick={() => setIsSettingsOpen(false)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <h2>Settings</h2>
+                        <div className="settings-section">
+                            <label>Store Name</label>
+                            <input
+                                type="text"
+                                value={storeName}
+                                onChange={(e) => setStoreName(e.target.value)}
+                                className="settings-input"
+                            />
 
-                                <label>Automated SMS Message</label>
-                                <textarea
-                                    value={defaultSmsMessage}
-                                    onChange={(e) => setDefaultSmsMessage(e.target.value)}
-                                    className="settings-input"
-                                    rows={3}
-                                />
+                            <label>Default Quote Time</label>
+                            <select className="settings-input" defaultValue="15">
+                                {Array.from({ length: 36 }, (_, i) => (i + 1) * 5).map(min => (
+                                    <option key={min} value={min}>
+                                        {min >= 60 ? `${Math.floor(min / 60)} hr ${min % 60 > 0 ? min % 60 + ' min' : ''}`.trim() : `${min} min`}
+                                    </option>
+                                ))}
+                            </select>
 
-                                <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '2px solid #fee2e2' }}>
-                                    {!isResetConfirming ? (
-                                        <button
-                                            onClick={() => setIsResetConfirming(true)}
-                                            style={{
-                                                width: '100%',
-                                                padding: '0.85rem',
-                                                background: '#ef4444',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '12px',
-                                                fontWeight: '700',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s',
-                                                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
-                                            }}
-                                            onMouseOver={(e) => e.currentTarget.style.background = '#dc2626'}
-                                            onMouseOut={(e) => e.currentTarget.style.background = '#ef4444'}
-                                        >
-                                            Reset Today's Waitlist
-                                        </button>
-                                    ) : (
-                                        <div style={{ textAlign: 'center' }}>
-                                            <p style={{ color: '#dc2626', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                                                this action can not be undone and all info will be erased.
-                                            </p>
-                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                <button
-                                                    onClick={() => setIsResetConfirming(false)}
-                                                    style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', fontWeight: '600', cursor: 'pointer' }}
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <button
-                                                    onClick={resetWaitlist}
-                                                    style={{ flex: 2, padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#dc2626', color: 'white', fontWeight: '700', cursor: 'pointer' }}
-                                                >
-                                                    CONFIRM RESET
-                                                </button>
-                                            </div>
+                            <label>Automated SMS Message</label>
+                            <textarea
+                                value={defaultSmsMessage}
+                                onChange={(e) => setDefaultSmsMessage(e.target.value)}
+                                className="settings-input"
+                                rows={3}
+                            />
+
+                            <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '2px solid #fee2e2' }}>
+                                {!isResetConfirming ? (
+                                    <button
+                                        onClick={() => setIsResetConfirming(true)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.85rem',
+                                            background: '#ef4444',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            fontWeight: '700',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.background = '#dc2626'}
+                                        onMouseOut={(e) => e.currentTarget.style.background = '#ef4444'}
+                                    >
+                                        Reset Today's Waitlist
+                                    </button>
+                                ) : (
+                                    <div style={{ textAlign: 'center' }}>
+                                        <p style={{ color: '#dc2626', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                                            this action can not be undone and all info will be erased.
+                                        </p>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => setIsResetConfirming(false)}
+                                                style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', fontWeight: '600', cursor: 'pointer' }}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={resetWaitlist}
+                                                style={{ flex: 2, padding: '0.75rem', borderRadius: '8px', border: 'none', background: '#dc2626', color: 'white', fontWeight: '700', cursor: 'pointer' }}
+                                            >
+                                                CONFIRM RESET
+                                            </button>
                                         </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="modal-actions">
-                                <button className="btn-cancel" onClick={() => {
-                                    const saved = localStorage.getItem('nextup_sms_message');
-                                    if (saved) setDefaultSmsMessage(saved);
-                                    setIsSettingsOpen(false);
-                                }}>Cancel</button>
-                                <button className="btn-close" onClick={saveSettings}>Save & Close</button>
+                                    </div>
+                                )}
                             </div>
                         </div>
+                        <div className="modal-actions">
+                            <button className="btn-cancel" onClick={() => {
+                                const saved = localStorage.getItem('nextup_sms_message');
+                                if (saved) setDefaultSmsMessage(saved);
+                                setIsSettingsOpen(false);
+                            }}>Cancel</button>
+                            <button className="btn-close" onClick={saveSettings}>Save & Close</button>
+                        </div>
                     </div>
-                )
+                </div>
+            )
             }
 
             <style jsx>{`
@@ -799,7 +1053,7 @@ export default function Home() {
         
         /* Sidebar Styling */
         .sidebar {
-            width: 100px;
+            width: 150px;
             background-color: var(--sidebar-bg);
             display: flex;
             flex-direction: column;
@@ -814,11 +1068,11 @@ export default function Home() {
             width: 100%;
         }
         .brand-logo {
-            width: 65px;
-            height: 65px;
-            border-radius: 16px;
+            width: 100px;
+            height: 100px;
+            border-radius: 20px;
             object-fit: cover;
-            box-shadow: 0 8px 20px rgba(0, 195, 255, 0.4), inset 0 2px 5px rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 25px rgba(0, 195, 255, 0.5), inset 0 2px 5px rgba(255, 255, 255, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .sidebar-nav {
@@ -893,22 +1147,37 @@ export default function Home() {
             justify-content: space-between;
             align-items: center;
             padding: 1rem 2rem;
-            height: 80px;
+            height: 150px;
+            position: relative;
         }
         .header-title {
             display: flex;
             align-items: center;
             gap: 1.5rem;
+            flex: 1;
+            padding-right: 15vw; /* Create space for the large central clock */
         }
         .time-display {
-            font-weight: 600;
-            font-size: 1.1rem;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: 800;
+            font-size: 3.5rem; /* Slightly larger to be exactly 2x of original 1.5rem + 0.5rem bump */
+            color: #fff;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+            white-space: nowrap;
+            z-index: 5;
         }
         .header-title h1 {
             margin: 0;
             font-size: 1.5rem;
             font-weight: 400;
             letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            white-space: nowrap;
         }
         .waitlist-count {
             background-color: rgba(255,255,255,0.2);
@@ -921,6 +1190,9 @@ export default function Home() {
             display: flex;
             align-items: center;
             gap: 1.5rem;
+            flex: 1;
+            justify-content: flex-end;
+            padding-left: 15vw; /* Create space for the large central clock */
         }
         .search-container {
             display: flex;
@@ -1180,6 +1452,21 @@ export default function Home() {
             }
         }
       `}</style>
-        </div >
+            <style jsx global>{`
+                .banana-orange-pulse {
+                    animation: banana-pulse 2s infinite;
+                    border: 2px solid #f97316 !important;
+                    background: rgba(249, 115, 22, 0.2) !important;
+                }
+                .banana-glow-urgent {
+                    box-shadow: 0 0 15px rgba(249, 115, 22, 0.6) !important;
+                }
+                @keyframes banana-pulse {
+                    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+                    70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+                    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+                }
+            `}</style>
+        </div>
     );
 }

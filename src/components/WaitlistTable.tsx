@@ -90,6 +90,10 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
 
     const saveEdit = async () => {
         if (!editingEntry) return;
+        if (!editName || !editSize || !editPhone) {
+            alert('Please fill in all mandatory fields (Name, Size, Phone)');
+            return;
+        }
         const supabase = createClient();
         await supabase.from('waitlist_entries').update({
             party_name: editName,
@@ -232,12 +236,36 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
                                 <input value={editName} onChange={e => setEditName(e.target.value)} />
                             </div>
                             <div className="form-group">
-                                <label>Party Size</label>
-                                <input type="number" min="1" value={editSize} onChange={e => setEditSize(parseInt(e.target.value))} />
+                                <label>Party Size (1-99)</label>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={editSize}
+                                    onChange={e => {
+                                        const val = e.target.value.replace(/\D/g, '');
+                                        if (val === '' || (parseInt(val) >= 1 && parseInt(val) <= 99)) {
+                                            setEditSize(parseInt(val) || 0);
+                                        }
+                                    }}
+                                />
                             </div>
                             <div className="form-group">
-                                <label>Phone Number (Optional)</label>
-                                <input value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="+1234567890" />
+                                <label>Phone Number</label>
+                                <input
+                                    value={editPhone}
+                                    onChange={e => {
+                                        const input = e.target.value.replace(/\D/g, '').substring(0, 10);
+                                        let formatted = input;
+                                        if (input.length > 6) {
+                                            formatted = `(${input.substring(0, 3)}) ${input.substring(3, 6)}-${input.substring(6, 10)}`;
+                                        } else if (input.length > 3) {
+                                            formatted = `(${input.substring(0, 3)}) ${input.substring(3, 6)}`;
+                                        } else if (input.length > 0) {
+                                            formatted = `(${input.substring(0, 3)}`;
+                                        }
+                                        setEditPhone(formatted);
+                                    }}
+                                />
                             </div>
                             <div className="form-group">
                                 <label>Notes (Optional)</label>

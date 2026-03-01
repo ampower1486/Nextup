@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { X } from 'lucide-react';
 
-export default function AddPartyForm({ onClose }: { onClose?: () => void }) {
+export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAdmin }: { onClose?: () => void, onCreated?: () => void, restaurantId: string | null, isAllAdmin?: boolean }) {
     const [name, setName] = useState('');
     const [size, setSize] = useState('');
     const [phone, setPhone] = useState('');
     const [notes, setNotes] = useState('');
     const [quotedTime, setQuotedTime] = useState('20');
+    const [selectedRestaurantId, setSelectedRestaurantId] = useState(restaurantId || '');
+    const [restaurants, setRestaurants] = useState<{ id: string, name: string }[]>([]);
     const [loading, setLoading] = useState(false);
 
     // Generate options from 5 to 180 in 5 min intervals
@@ -28,12 +30,33 @@ export default function AddPartyForm({ onClose }: { onClose?: () => void }) {
         setPhone(formatted);
     };
 
+    const handleSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value.replace(/\D/g, ''); // Number only
+        if (val === '' || (parseInt(val) >= 1 && parseInt(val) <= 99)) {
+            setSize(val);
+        }
+    };
+
+    useState(() => {
+        if (isAllAdmin) {
+            const supabase = createClient();
+            supabase.from('restaurants').select('id, name').then(({ data }) => {
+                if (data) setRestaurants(data);
+            });
+        }
+    });
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!name || !size || !quotedTime) return;
+        if (!name || !size || !quotedTime || !phone) {
+            alert('Please fill in all mandatory fields (Name, Size, Phone, Quoted Time)');
+            return;
+        }
 
         setLoading(true);
         const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+
         const { error } = await supabase.from('waitlist_entries').insert([{
             party_name: name,
             party_size: parseInt(size, 10),
@@ -41,10 +64,15 @@ export default function AddPartyForm({ onClose }: { onClose?: () => void }) {
             notes: notes.trim() || null,
             quoted_time: parseInt(quotedTime, 10),
             status: 'Waiting',
+            restaurant_id: isAllAdmin ? (selectedRestaurantId || null) : restaurantId,
+            user_id: user?.id || null
         }]);
 
-        if (!error && onClose) {
-            onClose();
+        if (!error) {
+            if (onCreated) onCreated();
+            if (onClose) onClose();
+        } else {
+            alert('Error adding party: ' + error.message);
         }
         setLoading(false);
     }
@@ -57,6 +85,17 @@ export default function AddPartyForm({ onClose }: { onClose?: () => void }) {
                     <button className="btn-close-icon" onClick={onClose}><X size={24} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="add-party-form">
+                    {isAllAdmin && (
+                        <div className="form-group">
+                            <label>Assign to Restaurant</label>
+                            <select value={selectedRestaurantId} onChange={e => setSelectedRestaurantId(e.target.value)}>
+                                <option value="">-- Global / Unassigned --</option>
+                                {restaurants.map(r => (
+                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                     <div className="form-group">
                         <label>Party Name</label>
                         <input
@@ -68,14 +107,13 @@ export default function AddPartyForm({ onClose }: { onClose?: () => void }) {
                         />
                     </div>
                     <div className="form-group">
-                        <label>Size</label>
+                        <label>Size (1-99)</label>
                         <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             placeholder="e.g. 4"
                             value={size}
-                            onChange={e => setSize(e.target.value)}
-                            min="1"
-                            max="30"
+                            onChange={handleSizeChange}
                             required
                         />
                     </div>
@@ -86,6 +124,7 @@ export default function AddPartyForm({ onClose }: { onClose?: () => void }) {
                             placeholder="(555) 555-5555"
                             value={phone}
                             onChange={handlePhoneChange}
+                            required
                         />
                     </div>
                     <div className="form-group">
