@@ -329,7 +329,11 @@ export default function Home() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        if (!restaurantId || restaurantId === 'null') return;
+        console.log("[System] fetchReservations called. restaurantId:", restaurantId);
+        if (!restaurantId || restaurantId === 'null' || restaurantId === null) {
+            console.log("[System] fetchReservations aborted: restaurantId is falsy");
+            return;
+        }
 
         // 2. Fetch external reservations if mapped
         const { data: mapping, error: mapError } = await supabase
@@ -464,12 +468,14 @@ export default function Home() {
                     <div className="header-column-left">
                         <div className="header-title">
                             <h1>
-                                <span style={{ color: '#3b82f6', fontSize: '2rem', fontWeight: '800' }}>{storeName}</span>
-                                <span style={{ color: '#3b82f6', fontWeight: '800' }}>»</span>
-                                <span>{currentTab}</span>
+                                <span style={{ color: '#fff' }}>{storeName}</span>
+                                <div className="breadcrumb">
+                                    <span style={{ color: '#3b82f6', fontWeight: '800', marginRight: '4px' }}>»</span>
+                                    <span>{currentTab}</span>
+                                </div>
                             </h1>
                             {effectiveAdmin && (
-                                <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: '700', marginLeft: '0.5rem', border: '1px solid #10b981', padding: '1px 5px', borderRadius: '4px' }}>
+                                <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: '700', marginTop: '4px', border: '1px solid #10b981', padding: '1px 5px', borderRadius: '4px', display: 'inline-block' }}>
                                     ADMIN ACTIVE
                                 </span>
                             )}
@@ -1202,15 +1208,18 @@ export default function Home() {
         }
         .header-title h1 {
             margin: 0;
-            font-size: 1.5rem;
-            font-weight: 400;
-            letter-spacing: 0.5px;
+            font-size: 1.4rem;
+            font-weight: 800;
             display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            flex-direction: column; /* Stack name and breadcrumb to save horizontal space */
+            align-items: flex-start;
+            gap: 0;
+            line-height: 1.2;
+        }
+        .header-title .breadcrumb {
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: rgba(255,255,255,0.7);
         }
         .waitlist-count {
             background-color: rgba(255,255,255,0.2);
