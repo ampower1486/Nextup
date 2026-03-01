@@ -778,12 +778,16 @@ export default function Home() {
                                         </Link>
 
                                         <button
-                                            onClick={async () => {
-                                                const { externalSupabase } = await import('@/lib/external_supabase');
-                                                const { data, error } = await externalSupabase.from('restaurants').select('count');
-                                                if (!error) alert('Connection Successful! TableServe project is communicating.');
-                                                else alert('Connection Failed: ' + error.message);
-                                            }}
+                                             onClick={async () => {
+                                                 try {
+                                                     const res = await fetch("/api/external/restaurants");
+                                                     const data = await res.json();
+                                                     if (!data.error) alert("Connection Successful! TableServe proxy is communicating. Found " + (data.restaurants?.length || 0) + " restaurants.");
+                                                     else alert("Connection Failed: " + data.error);
+                                                 } catch (e) {
+                                                     alert("Connection Error: " + e.message);
+                                                 }
+                                             }}
                                             style={{
                                                 padding: '0.85rem 1.5rem',
                                                 backgroundColor: '#8b5cf6',
