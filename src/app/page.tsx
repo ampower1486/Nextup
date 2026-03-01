@@ -370,6 +370,14 @@ export default function Home() {
         if (!user) return;
 
         console.log("[System] fetchReservations called. restaurantId:", restaurantId);
+
+        // 1. Safety check to avoid 22P02 invalid UUID error if restaurantId is null string or empty
+        if (!restaurantId || restaurantId === 'null') {
+            console.log("[System] No restaurant ID for reservations, returning empty.");
+            setReservations([]);
+            return;
+        }
+
         // 2. Fetch external reservations if mapped
         const { data: mappings, error: mapError } = await supabase
             .from('external_mappings')

@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getExternalSupabase } from '@/lib/external_supabase';
 
 export async function POST(req: Request) {
     try {
         const { action, ...payload } = await req.json();
 
-        const supabaseUrl = process.env.EXTERNAL_SUPABASE_URL || process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_URL;
-        const supabaseKey = process.env.EXTERNAL_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_ANON_KEY;
+        const externalSupabase = getExternalSupabase();
 
-        if (!supabaseUrl || !supabaseKey) {
-            return NextResponse.json({ error: 'External Supabase configuration missing' }, { status: 500 });
+        if (!externalSupabase) {
+            return NextResponse.json({ error: 'External Supabase client initialization failed' }, { status: 500 });
         }
-
-        const externalSupabase = createClient(supabaseUrl, supabaseKey);
 
         if (action === 'update-status') {
             const { resId, status } = payload;
