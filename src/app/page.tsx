@@ -443,11 +443,11 @@ export default function Home() {
 
         // Sync back to Tableserve: update reservation status to checked_in (or similar)
         try {
-            const { externalSupabase } = await import('@/lib/external_supabase');
-            await externalSupabase
-                .from('reservations')
-                .update({ status: 'checked_in' })
-                .eq('id', res.id);
+            await fetch('/api/external/proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update-status', resId: res.id, status: 'checked_in' })
+            });
         } catch (err) {
             console.error("Tableserve sync-back error:", err);
         }
