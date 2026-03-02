@@ -13,7 +13,7 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
     const [selectedRestaurantId, setSelectedRestaurantId] = useState(restaurantId || '');
     const [restaurants, setRestaurants] = useState<{ id: string, name: string }[]>([]);
     const [loading, setLoading] = useState(false);
-    const [isCustomFocused, setIsCustomFocused] = useState(false);
+    const [customSize, setCustomSize] = useState('');
 
     // Generate options from 5 to 180 in 5 min intervals
     const timeOptions = Array.from({ length: 36 }, (_, i) => (i + 1) * 5);
@@ -35,6 +35,7 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
         const val = e.target.value.replace(/\D/g, ''); // Number only
         if (val === '' || (parseInt(val) >= 1 && parseInt(val) <= 99)) {
             setSize(val);
+            setCustomSize(val);
         }
     };
 
@@ -104,7 +105,7 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
                                     type="button"
                                     key={num}
                                     className={`btn-size ${size === num.toString() ? 'selected' : ''}`}
-                                    onClick={() => setSize(num.toString())}
+                                    onClick={() => { setSize(num.toString()); setCustomSize(''); }}
                                 >
                                     {num}
                                 </button>
@@ -113,16 +114,9 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
                                 type="text"
                                 inputMode="numeric"
                                 placeholder="Other"
-                                value={(isCustomFocused || (size !== '' && !['1', '2', '3', '4', '5', '6'].includes(size))) ? size : ''}
+                                value={customSize}
                                 onChange={handleSizeChange}
-                                onFocus={() => {
-                                    setIsCustomFocused(true);
-                                    if (['1', '2', '3', '4', '5', '6'].includes(size)) {
-                                        setSize('');
-                                    }
-                                }}
-                                onBlur={() => setIsCustomFocused(false)}
-                                className={`input-size-other ${(size !== '' && !['1', '2', '3', '4', '5', '6'].includes(size)) ? 'selected-input' : ''}`}
+                                className={`input-size-other ${customSize !== '' ? 'selected-input' : ''}`}
                             />
                         </div>
                     </div>
