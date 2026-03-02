@@ -1263,9 +1263,9 @@ export default function Home() {
             align-items: center;
             justify-content: space-between;
             padding: 2rem 3rem;
-            background: linear-gradient(180deg, rgba(15,23,42,0.8) 0%, rgba(15,23,42,0) 100%);
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            backdrop-filter: blur(10px);
+            background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             position: relative;
             z-index: 5;
         }
