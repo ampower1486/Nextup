@@ -31,11 +31,16 @@ export default function Signup() {
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
-          restaurant_name: 'New Restaurant',
-          full_name: 'Restaurant Manager', // Often required by Supabase profiles triggers
+          restaurant_name: `Restaurant ${Math.random().toString(36).substring(2, 10)}`, // Ensure uniqueness for constraints
+          full_name: 'Restaurant Manager',
           name: 'Restaurant Manager',
+          first_name: 'Restaurant',
+          last_name: 'Manager',
+          avatar_url: '',
           role: 'restaurant',
-          slug: 'new-restaurant-' + Math.random().toString(36).substring(2, 7)
+          slug: `restaurant-${Math.random().toString(36).substring(2, 10)}`,
+          phone: '',
+          address: ''
         }
       },
     });
