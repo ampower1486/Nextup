@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getExternalSupabase } from '@/lib/external_supabase';
 
 export async function GET(req: Request) {
     try {
@@ -10,14 +10,12 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: 'Missing restaurant_id' }, { status: 400 });
         }
 
-        const supabaseUrl = process.env.EXTERNAL_SUPABASE_URL || process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_URL;
-        const supabaseKey = process.env.EXTERNAL_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_ANON_KEY;
+        const externalSupabase = getExternalSupabase();
 
-        if (!supabaseUrl || !supabaseKey) {
+        if (!externalSupabase) {
             return NextResponse.json({ error: 'External Supabase configuration missing' }, { status: 500 });
         }
 
-        const externalSupabase = createClient(supabaseUrl, supabaseKey);
         const { data, error } = await externalSupabase
             .from('reservations')
             .select('*')
