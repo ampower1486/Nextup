@@ -82,11 +82,17 @@ export default function AdminMappings() {
         const supabase = createClient();
 
         try {
-            // Upsert mappings
-            const upsertData = Object.entries(mappings).map(([localId, externalId]) => ({
-                local_restaurant_id: localId,
-                external_restaurant_id: externalId
-            }));
+            // Filter out empty selections ('-- No Sync --')
+            const validMappings = Object.entries(mappings).filter(([_, externalId]) => externalId && externalId.trim().length > 0);
+
+            const upsertData = validMappings.map(([localId, externalId]) => {
+                const extResto = externalRestos.find(r => r.id === externalId);
+                return {
+                    local_restaurant_id: localId,
+                    external_restaurant_id: externalId,
+                    external_restaurant_name: extResto ? extResto.name : 'Unknown'
+                };
+            });
 
             // Clear old local mappings first (simplified approach)
             await supabase.from('external_mappings').delete().not('local_restaurant_id', 'is', null);
