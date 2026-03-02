@@ -160,71 +160,73 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
 
     return (
         <div className="table-container">
-            <table className="waitlist-table">
-                <thead>
-                    <tr>
-                        <th>PARTY</th>
-                        <th>SIZE</th>
-                        <th style={{ textAlign: 'center' }}>QUOTED</th>
-                        <th style={{ textAlign: 'center' }}>WAIT</th>
-                        <th style={{ textAlign: 'center' }}>NOTIFY</th>
-                        <th style={{ textAlign: 'center' }}>ACTIONS</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {entries.length === 0 ? (
+            <div className="table-responsive-wrapper">
+                <table className="waitlist-table">
+                    <thead>
                         <tr>
-                            <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
-                                No active parties waiting.
-                            </td>
+                            <th>PARTY</th>
+                            <th>SIZE</th>
+                            <th style={{ textAlign: 'center' }}>QUOTED</th>
+                            <th style={{ textAlign: 'center' }}>WAIT</th>
+                            <th style={{ textAlign: 'center' }}>NOTIFY</th>
+                            <th style={{ textAlign: 'center' }}>ACTIONS</th>
                         </tr>
-                    ) : null}
-                    {entries.map((entry) => (
-                        <tr key={entry.id} className={entry.is_tableserve ? 'tableserve-row' : ''}>
-                            <td>
-                                <div className="party-info">
-                                    <strong className="party-name">{entry.party_name}</strong>
-                                    <span className="party-phone">{entry.phone_number || 'No Phone'}</span>
-                                    <span className="party-time" style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '2px' }}>Added: {new Date(entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-                                    {entry.notes && <span className="source-label" style={{ color: '#8b5cf6', marginTop: '4px' }}>Note: {entry.notes}</span>}
-                                    {entry.is_tableserve && <span className="source-label">TableServe</span>}
-                                </div>
-                            </td>
-                            <td>
-                                <span className="size-text">{entry.party_size}</span>
-                            </td>
-                            <td style={{ textAlign: 'center' }}>
-                                <TimerDisplay createdAt={entry.created_at} quotedTime={entry.quoted_time} status={entry.status} />
-                            </td>
-                            <td style={{ textAlign: 'center' }}>
-                                <span className="wait-text">
-                                    <ElapsedWait createdAt={entry.created_at} status={entry.status} />
-                                </span>
-                            </td>
-                            <td style={{ textAlign: 'center' }}>
-                                <div className="notify-actions" style={{ justifyContent: 'center' }}>
-                                    <button className="btn-action btn-message" title="Chat" onClick={() => openChat(entry)}>
-                                        <MessageSquare size={16} />
-                                    </button>
-                                </div>
-                            </td>
-                            <td>
-                                <div className="actions-cell">
-                                    <button onClick={() => handleUpdateStatus(entry, 'Seated')} className="btn-action btn-seat" title="Seat Party">
-                                        <Check size={18} />
-                                    </button>
-                                    <button onClick={() => handleUpdateStatus(entry, 'No Show')} className="btn-action btn-cancel" title="Cancel/No Show">
-                                        <X size={18} />
-                                    </button>
-                                    <button className="btn-action btn-edit" title="Edit" onClick={() => openEdit(entry)}>
-                                        <Edit2 size={16} />
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {entries.length === 0 ? (
+                            <tr>
+                                <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
+                                    No active parties waiting.
+                                </td>
+                            </tr>
+                        ) : null}
+                        {entries.map((entry) => (
+                            <tr key={entry.id} className={entry.is_tableserve ? 'tableserve-row' : ''}>
+                                <td>
+                                    <div className="party-info">
+                                        <strong className="party-name">{entry.party_name}</strong>
+                                        <span className="party-phone">{entry.phone_number || 'No Phone'}</span>
+                                        <span className="party-time" style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '2px' }}>Added: {new Date(entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                                        {entry.notes && <span className="source-label" style={{ color: '#8b5cf6', marginTop: '4px' }}>Note: {entry.notes}</span>}
+                                        {entry.is_tableserve && <span className="source-label">TableServe</span>}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span className="size-text">{entry.party_size}</span>
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                    <TimerDisplay createdAt={entry.created_at} quotedTime={entry.quoted_time} status={entry.status} />
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                    <span className="wait-text">
+                                        <ElapsedWait createdAt={entry.created_at} status={entry.status} />
+                                    </span>
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                    <div className="notify-actions" style={{ justifyContent: 'center' }}>
+                                        <button className="btn-action btn-message" title="Chat" onClick={() => openChat(entry)}>
+                                            <MessageSquare size={16} />
+                                        </button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div className="actions-cell">
+                                        <button onClick={() => handleUpdateStatus(entry, 'Seated')} className="btn-action btn-seat" title="Seat Party">
+                                            <Check size={18} />
+                                        </button>
+                                        <button onClick={() => handleUpdateStatus(entry, 'No Show')} className="btn-action btn-cancel" title="Cancel/No Show">
+                                            <X size={18} />
+                                        </button>
+                                        <button className="btn-action btn-edit" title="Edit" onClick={() => openEdit(entry)}>
+                                            <Edit2 size={16} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
             {
                 editingEntry && (
@@ -308,6 +310,7 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
           width: 100%;
           border-collapse: collapse;
           text-align: left;
+          min-width: 600px;
         }
         th {
           background-color: white;

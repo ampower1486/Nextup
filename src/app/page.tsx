@@ -623,124 +623,128 @@ export default function Home() {
                                         </button>
                                     </div>
                                 </div>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>PARTY</th>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SIZE</th>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>DATE CREATED</th>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>DATE & TIME</th>
-                                            {userRole === 'admin' && <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SHARED</th>}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {reservations
-                                            .filter(res => {
-                                                const resDate = new Date(res.date_time);
-                                                const now = new Date();
-                                                const diffDays = (resDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-                                                if (resFilter === 'week') return diffDays >= -1 && diffDays <= 7;
-                                                return diffDays >= -1 && diffDays <= 30;
-                                            })
-                                            .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
-                                            .length === 0 ? (
-                                            <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No reservations for this period.</td></tr>
-                                        ) : null}
-                                        {reservations
-                                            .filter(res => {
-                                                const resDate = new Date(res.date_time);
-                                                const now = new Date();
-                                                const diffDays = (resDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-                                                if (resFilter === 'week') return diffDays >= -1 && diffDays <= 7;
-                                                return diffDays >= -1 && diffDays <= 30;
-                                            })
-                                            .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
-                                            .map(res => (
-                                                <tr key={res.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
-                                                    <td style={{ padding: '1rem 2rem' }}>
-                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                            <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{res.name}</strong>
-                                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{res.phone_number || 'No Phone'}</span>
-                                                            {res.notes && <span style={{ fontSize: '0.75rem', color: '#8b5cf6', marginTop: '2px', fontStyle: 'italic' }}>Note: {res.notes}</span>}
-                                                        </div>
-                                                    </td>
-                                                    <td style={{ padding: '1rem 2rem' }}><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{res.size}</span></td>
-                                                    <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{res.created_at ? new Date(res.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-'}</td>
-                                                    <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(res.date_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
-                                                    {userRole === 'admin' && (
+                                <div className="table-responsive-wrapper">
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '650px' }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>PARTY</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SIZE</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>DATE CREATED</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>DATE & TIME</th>
+                                                {userRole === 'admin' && <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SHARED</th>}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {reservations
+                                                .filter(res => {
+                                                    const resDate = new Date(res.date_time);
+                                                    const now = new Date();
+                                                    const diffDays = (resDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+                                                    if (resFilter === 'week') return diffDays >= -1 && diffDays <= 7;
+                                                    return diffDays >= -1 && diffDays <= 30;
+                                                })
+                                                .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
+                                                .length === 0 ? (
+                                                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No reservations for this period.</td></tr>
+                                            ) : null}
+                                            {reservations
+                                                .filter(res => {
+                                                    const resDate = new Date(res.date_time);
+                                                    const now = new Date();
+                                                    const diffDays = (resDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+                                                    if (resFilter === 'week') return diffDays >= -1 && diffDays <= 7;
+                                                    return diffDays >= -1 && diffDays <= 30;
+                                                })
+                                                .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
+                                                .map(res => (
+                                                    <tr key={res.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
                                                         <td style={{ padding: '1rem 2rem' }}>
-                                                            <button
-                                                                onClick={() => toggleShareReservation(res.id, !!res.is_shared)}
-                                                                style={{
-                                                                    padding: '0.4rem 0.8rem',
-                                                                    borderRadius: '8px',
-                                                                    border: 'none',
-                                                                    background: res.is_shared ? '#dcfce7' : '#fee2e2',
-                                                                    color: res.is_shared ? '#166534' : '#991b1b',
-                                                                    fontWeight: '600',
-                                                                    cursor: 'pointer',
-                                                                    fontSize: '0.75rem'
-                                                                }}
-                                                            >
-                                                                {res.is_shared ? 'SHARED' : 'HIDDEN'}
-                                                            </button>
+                                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{res.name}</strong>
+                                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{res.phone_number || 'No Phone'}</span>
+                                                                {res.notes && <span style={{ fontSize: '0.75rem', color: '#8b5cf6', marginTop: '2px', fontStyle: 'italic' }}>Note: {res.notes}</span>}
+                                                            </div>
                                                         </td>
-                                                    )}
-                                                </tr>
-                                            ))}
-                                    </tbody>
-                                </table>
+                                                        <td style={{ padding: '1rem 2rem' }}><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{res.size}</span></td>
+                                                        <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{res.created_at ? new Date(res.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-'}</td>
+                                                        <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(res.date_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                                                        {userRole === 'admin' && (
+                                                            <td style={{ padding: '1rem 2rem' }}>
+                                                                <button
+                                                                    onClick={() => toggleShareReservation(res.id, !!res.is_shared)}
+                                                                    style={{
+                                                                        padding: '0.4rem 0.8rem',
+                                                                        borderRadius: '8px',
+                                                                        border: 'none',
+                                                                        background: res.is_shared ? '#dcfce7' : '#fee2e2',
+                                                                        color: res.is_shared ? '#166534' : '#991b1b',
+                                                                        fontWeight: '600',
+                                                                        cursor: 'pointer',
+                                                                        fontSize: '0.75rem'
+                                                                    }}
+                                                                >
+                                                                    {res.is_shared ? 'SHARED' : 'HIDDEN'}
+                                                                </button>
+                                                            </td>
+                                                        )}
+                                                    </tr>
+                                                ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
 
                         {currentTab === 'Recent' && (
                             <div>
                                 <h2 style={{ padding: '2rem 2rem 1rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Recent Activity</h2>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>PARTY</th>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SIZE</th>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>STATUS</th>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>TIME ADDED</th>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>TIME SEATED / CANCELED</th>
-                                            <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem', textAlign: 'center' }}>ACTIONS</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {pastEntries.length === 0 ? (
-                                            <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No recent activity.</td></tr>
-                                        ) : null}
-                                        {pastEntries.map(entry => (
-                                            <tr key={entry.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
-                                                <td style={{ padding: '1rem 2rem' }}>
-                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                        <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{entry.party_name}</strong>
-                                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{entry.phone_number || 'No Phone'}</span>
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '1rem 2rem' }}><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{entry.party_size}</span></td>
-                                                <td style={{ padding: '1rem 2rem' }}>
-                                                    <span style={{
-                                                        padding: '4px 8px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold',
-                                                        backgroundColor: entry.status === 'Seated' ? '#dcfce7' : entry.status === 'No Show' ? '#fee2e2' : '#f1f5f9',
-                                                        color: entry.status === 'Seated' ? '#166534' : entry.status === 'No Show' ? '#991b1b' : '#475569'
-                                                    }}>
-                                                        {entry.status}
-                                                    </span>
-                                                </td>
-                                                <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
-                                                <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(entry.updated_at || entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
-                                                <td style={{ padding: '1rem 2rem', textAlign: 'center' }}>
-                                                    <button onClick={() => restoreParty(entry.id)} style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)' }}
-                                                        onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 15px rgba(59, 130, 246, 0.4)'; }}
-                                                        onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(59, 130, 246, 0.3)'; }}
-                                                    >Restore</button>
-                                                </td>
+                                <div className="table-responsive-wrapper">
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '650px' }}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>PARTY</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SIZE</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>STATUS</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>TIME ADDED</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>TIME SEATED / CANCELED</th>
+                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem', textAlign: 'center' }}>ACTIONS</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {pastEntries.length === 0 ? (
+                                                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No recent activity.</td></tr>
+                                            ) : null}
+                                            {pastEntries.map(entry => (
+                                                <tr key={entry.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
+                                                    <td style={{ padding: '1rem 2rem' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{entry.party_name}</strong>
+                                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{entry.phone_number || 'No Phone'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '1rem 2rem' }}><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{entry.party_size}</span></td>
+                                                    <td style={{ padding: '1rem 2rem' }}>
+                                                        <span style={{
+                                                            padding: '4px 8px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold',
+                                                            backgroundColor: entry.status === 'Seated' ? '#dcfce7' : entry.status === 'No Show' ? '#fee2e2' : '#f1f5f9',
+                                                            color: entry.status === 'Seated' ? '#166534' : entry.status === 'No Show' ? '#991b1b' : '#475569'
+                                                        }}>
+                                                            {entry.status}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
+                                                    <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(entry.updated_at || entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
+                                                    <td style={{ padding: '1rem 2rem', textAlign: 'center' }}>
+                                                        <button onClick={() => restoreParty(entry.id)} style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)' }}
+                                                            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 15px rgba(59, 130, 246, 0.4)'; }}
+                                                            onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(59, 130, 246, 0.3)'; }}
+                                                        >Restore</button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
 
@@ -1514,7 +1518,7 @@ export default function Home() {
         }
         
         @media (max-width: 768px) {
-            .dashboard-container {
+            .app-container {
                 flex-direction: column;
             }
             .sidebar {
