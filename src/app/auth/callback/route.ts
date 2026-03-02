@@ -2,24 +2,42 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 
 export async function GET(request: Request) {
-    const requestUrl = new URL(request.url)
-    const code = requestUrl.searchParams.get('code')
-    const type = requestUrl.searchParams.get('type')
-    const next = requestUrl.searchParams.get('next') ?? (type === 'recovery' ? '/reset-password' : '/')
+    const { searchParams, origin } = new URL(request.url)
+    const code = searchParams.get('code')
+    // if "next" is in param, use it as the redirect URL
+    const next = searchParams.get('next') ?? '/'
+    const type = searchParams.get('type')
+    const error_description = searchParams.get('error_description')
+    const error_name = searchParams.get('error')
 
-    try {
-        if (code) {
-            const supabase = await createClient()
-            const { error, data } = await supabase.auth.exchangeCodeForSession(code)
+    const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
+    const finalOrigin = forwardedHost ? `https://${forwardedHost}` : origin
 
-            if (!error && data.session) {
-                return NextResponse.redirect(`${requestUrl.origin}${next}`)
-            }
+    // Redirect to an error page if Supabase returned an error
+    if (error_name || error_description) {
+        const errorMsg = encodeURIComponent(error_description || error_name || 'Invalid reset link')
+        return NextResponse.redirect(`${finalOrigin}/login?message=${errorMsg}`)
+    }
+
+    if (code) {
+        const supabase = await createClient()
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+        if (!error) {
+            return NextResponse.redirect(`${finalOrigin}${next}`)
+        } else {
+            console.error('Exchange code error:', error?.message)
+            const errorMsg = encodeURIComponent(error?.message || 'Exchange code error')
+            return NextResponse.redirect(`${finalOrigin}/login?message=${errorMsg}`)
         }
-    } catch (err) {
-        console.error('Callback error:', err)
+    }
+
+    // If there's no code but a direct load, possibly a hash fragment recovery flow or missing code entirely.
+    // We should pass them to the next page to let the client handle any hash fragments.
+    if (type === 'recovery' || next.includes('/reset-password')) {
+        return NextResponse.redirect(`${finalOrigin}${next}`)
     }
 
     const message = encodeURIComponent('Invalid or expired reset link. Please try again.')
-    return NextResponse.redirect(`${requestUrl.origin}/login?message=${message}`)
+    return NextResponse.redirect(`${finalOrigin}/login?message=${message}`)
 }
