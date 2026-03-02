@@ -248,8 +248,15 @@ export default function Home() {
             // No extra filter
         }
 
-        const { data } = await query.order('created_at', { ascending: true });
-        if (data) setEntries(data as WaitlistEntry[]);
+        const { data } = await query;
+        if (data) {
+            const sortedData = (data as WaitlistEntry[]).sort((a, b) => {
+                const timeA = new Date(a.created_at).getTime() + (a.quoted_time * 60000);
+                const timeB = new Date(b.created_at).getTime() + (b.quoted_time * 60000);
+                return timeA - timeB;
+            });
+            setEntries(sortedData);
+        }
     }
 
     async function fetchPastEntries() {

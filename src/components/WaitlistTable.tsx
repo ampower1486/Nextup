@@ -165,8 +165,8 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
                     <tr>
                         <th>PARTY</th>
                         <th>SIZE</th>
-                        <th>QUOTED</th>
-                        <th>WAIT</th>
+                        <th style={{ textAlign: 'center' }}>QUOTED</th>
+                        <th style={{ textAlign: 'center' }}>WAIT</th>
                         <th style={{ textAlign: 'center' }}>NOTIFY</th>
                         <th style={{ textAlign: 'center' }}>ACTIONS</th>
                     </tr>
@@ -193,16 +193,16 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
                             <td>
                                 <span className="size-text">{entry.party_size}</span>
                             </td>
-                            <td>
+                            <td style={{ textAlign: 'center' }}>
                                 <TimerDisplay createdAt={entry.created_at} quotedTime={entry.quoted_time} status={entry.status} />
                             </td>
-                            <td>
+                            <td style={{ textAlign: 'center' }}>
                                 <span className="wait-text">
                                     <ElapsedWait createdAt={entry.created_at} status={entry.status} />
                                 </span>
                             </td>
-                            <td>
-                                <div className="notify-actions">
+                            <td style={{ textAlign: 'center' }}>
+                                <div className="notify-actions" style={{ justifyContent: 'center' }}>
                                     <button className="btn-action btn-message" title="Chat" onClick={() => openChat(entry)}>
                                         <MessageSquare size={16} />
                                     </button>
@@ -364,6 +364,7 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
         .time-group {
             display: flex;
             flex-direction: column;
+            align-items: center;
             gap: 0.2rem;
         }
         .quoted-time {
