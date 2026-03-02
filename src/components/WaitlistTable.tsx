@@ -209,7 +209,7 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
                                         </button>
                                     </div>
                                 </td>
-                                <td>
+                                <td style={{ textAlign: 'center' }}>
                                     <div className="actions-cell">
                                         <button onClick={() => handleUpdateStatus(entry, 'Seated')} className="btn-action btn-seat" title="Seat Party">
                                             <Check size={18} />
@@ -321,11 +321,12 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
           letter-spacing: 0.5px;
           border-bottom: 2px solid var(--table-border);
           text-transform: uppercase;
+          white-space: nowrap;
         }
         td {
-          padding: 1rem 1.5rem;
+          padding: 1.25rem 1.5rem;
           border-bottom: 1px solid var(--table-border);
-          vertical-align: top;
+          vertical-align: middle;
         }
         
         /* Alternating row colors */

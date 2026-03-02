@@ -542,16 +542,16 @@ export default function Home() {
             <main className="main-area">
                 <header className="top-header">
                     <div className="header-column-left">
-                        <div className="header-title">
-                            <h1>
-                                <span style={{ color: '#fff' }}>{storeName}</span>
-                                <div className="breadcrumb">
-                                    <span style={{ color: '#3b82f6', fontWeight: '800', marginRight: '4px' }}>»</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', lineHeight: 1.1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <span style={{ color: 'white' }}>{storeName || 'Loading...'}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#60a5fa', fontSize: '0.8rem', fontWeight: '600', letterSpacing: '0.5px' }}>
+                                    <span style={{ fontSize: '1rem' }}>»</span>
                                     <span>{currentTab}</span>
                                 </div>
                             </h1>
                             {effectiveAdmin && (
-                                <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: '700', marginTop: '4px', border: '1px solid #10b981', padding: '1px 5px', borderRadius: '4px', display: 'inline-block' }}>
+                                <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: '700', marginTop: '4px', border: '1px solid #10b981', padding: '1px 5px', borderRadius: '4px', display: 'inline-block', width: 'fit-content' }}>
                                     ADMIN ACTIVE
                                 </span>
                             )}
@@ -624,14 +624,14 @@ export default function Home() {
                                     </div>
                                 </div>
                                 <div className="table-responsive-wrapper">
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '650px' }}>
+                                    <table className="res-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '650px' }}>
                                         <thead>
                                             <tr>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>PARTY</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SIZE</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>DATE CREATED</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>DATE & TIME</th>
-                                                {userRole === 'admin' && <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SHARED</th>}
+                                                <th>PARTY</th>
+                                                <th>SIZE</th>
+                                                <th>DATE CREATED</th>
+                                                <th>DATE & TIME</th>
+                                                {userRole === 'admin' && <th>SHARED</th>}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -658,18 +658,18 @@ export default function Home() {
                                                 .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())
                                                 .map(res => (
                                                     <tr key={res.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
-                                                        <td style={{ padding: '1rem 2rem' }}>
+                                                        <td>
                                                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                                                 <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{res.name}</strong>
                                                                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{res.phone_number || 'No Phone'}</span>
                                                                 {res.notes && <span style={{ fontSize: '0.75rem', color: '#8b5cf6', marginTop: '2px', fontStyle: 'italic' }}>Note: {res.notes}</span>}
                                                             </div>
                                                         </td>
-                                                        <td style={{ padding: '1rem 2rem' }}><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{res.size}</span></td>
-                                                        <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{res.created_at ? new Date(res.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-'}</td>
-                                                        <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(res.date_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                                                        <td><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{res.size}</span></td>
+                                                        <td style={{ color: 'var(--text-secondary)' }}>{res.created_at ? new Date(res.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '-'}</td>
+                                                        <td style={{ color: 'var(--text-secondary)' }}>{new Date(res.date_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
                                                         {userRole === 'admin' && (
-                                                            <td style={{ padding: '1rem 2rem' }}>
+                                                            <td>
                                                                 <button
                                                                     onClick={() => toggleShareReservation(res.id, !!res.is_shared)}
                                                                     style={{
@@ -699,15 +699,15 @@ export default function Home() {
                             <div>
                                 <h2 style={{ padding: '2rem 2rem 1rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Recent Activity</h2>
                                 <div className="table-responsive-wrapper">
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '650px' }}>
+                                    <table className="res-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '650px' }}>
                                         <thead>
                                             <tr>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>PARTY</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>SIZE</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>STATUS</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>TIME ADDED</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>TIME SEATED / CANCELED</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem', textAlign: 'center' }}>ACTIONS</th>
+                                                <th>PARTY</th>
+                                                <th>SIZE</th>
+                                                <th>STATUS</th>
+                                                <th>TIME ADDED</th>
+                                                <th>TIME SEATED / CANCELED</th>
+                                                <th style={{ textAlign: 'center' }}>ACTIONS</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -716,14 +716,14 @@ export default function Home() {
                                             ) : null}
                                             {pastEntries.map(entry => (
                                                 <tr key={entry.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
-                                                    <td style={{ padding: '1rem 2rem' }}>
+                                                    <td>
                                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                                                             <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{entry.party_name}</strong>
                                                             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{entry.phone_number || 'No Phone'}</span>
                                                         </div>
                                                     </td>
-                                                    <td style={{ padding: '1rem 2rem' }}><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{entry.party_size}</span></td>
-                                                    <td style={{ padding: '1rem 2rem' }}>
+                                                    <td><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{entry.party_size}</span></td>
+                                                    <td>
                                                         <span style={{
                                                             padding: '4px 8px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold',
                                                             backgroundColor: entry.status === 'Seated' ? '#dcfce7' : entry.status === 'No Show' ? '#fee2e2' : '#f1f5f9',
@@ -732,9 +732,9 @@ export default function Home() {
                                                             {entry.status}
                                                         </span>
                                                     </td>
-                                                    <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
-                                                    <td style={{ padding: '1rem 2rem', color: 'var(--text-secondary)' }}>{new Date(entry.updated_at || entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
-                                                    <td style={{ padding: '1rem 2rem', textAlign: 'center' }}>
+                                                    <td style={{ color: 'var(--text-secondary)' }}>{new Date(entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
+                                                    <td style={{ color: 'var(--text-secondary)' }}>{new Date(entry.updated_at || entry.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td>
+                                                    <td style={{ textAlign: 'center' }}>
                                                         <button onClick={() => restoreParty(entry.id)} style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)' }}
                                                             onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 15px rgba(59, 130, 246, 0.4)'; }}
                                                             onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(59, 130, 246, 0.3)'; }}
@@ -858,7 +858,7 @@ export default function Home() {
                                 </div>
 
                                 <div style={{ padding: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                                    <div className="metric-card banana-glow banana-blue" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--table-border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <div className="metric-card banana-glow banana-blue" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--table-border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                                         <span style={{ fontSize: '2rem', fontWeight: 'bold' }}>{allRestaurants.length}</span>
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Total Stores</span>
                                     </div>
@@ -1259,35 +1259,40 @@ export default function Home() {
 
         /* Top Blue Header */
         .top-header {
-            background-color: var(--sidebar-bg);
-            color: white;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 1rem 2rem;
-            height: 150px;
+            justify-content: space-between;
+            padding: 2rem 3rem;
+            background: linear-gradient(180deg, rgba(15,23,42,0.8) 0%, rgba(15,23,42,0) 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
             position: relative;
+            z-index: 5;
         }
         .header-column-left {
-            flex: 1 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: flex-start !important;
-            min-width: 0 !important;
+            flex: 1;
+            display: flex;
+            align-items: center;
         }
         .header-column-center {
-            flex: 0 0 auto !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            width: 350px !important; /* Fixed space for the massive clock */
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         .header-column-right {
-            flex: 1 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: flex-end !important;
-            min-width: 0 !important;
+            flex: 1;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        .time-display {
+            font-size: 3rem;
+            font-weight: 800;
+            color: white;
+            letter-spacing: -1px;
+            text-shadow: 0 4px 20px rgba(255,255,255,0.3);
+            text-align: center;
         }
         .header-title {
             display: flex;
@@ -1295,13 +1300,6 @@ export default function Home() {
             gap: 1.5rem;
             min-width: 0;
             overflow: hidden;
-        }
-        .time-display {
-            font-weight: 800;
-            font-size: 3.5rem;
-            color: #fff;
-            text-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
-            white-space: nowrap;
         }
         .header-title h1 {
             margin: 0 !important;
@@ -1522,53 +1520,66 @@ export default function Home() {
                 width: 100%;
                 height: auto;
                 flex-direction: row;
-                padding: 0.5rem;
-                justify-content: space-between;
+                padding: 0.5rem 1rem;
+                justify-content: flex-start;
                 align-items: center;
                 border-right: none;
                 border-bottom: 1px solid rgba(255,255,255,0.1);
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
             }
             .sidebar-logo {
-                margin: 0;
-                width: auto;
                 display: none;
             }
             .sidebar-nav {
                 flex-direction: row;
-                gap: 0.5rem;
-                justify-content: center;
-                width: auto;
-                flex: 1;
+                gap: 0.75rem;
+                justify-content: flex-start;
+                width: max-content;
+                flex: none;
             }
             .nav-item {
-                flex: 1;
-                max-width: 80px;
+                flex: 0 0 auto;
+                width: 65px;
             }
             .nav-item span {
                 display: none;
             }
             .nav-logout {
-                margin: 0;
+                margin: 0 0 0 auto;
                 padding: 0;
                 width: auto;
-                flex: 0;
+                flex: 0 0 auto;
+                padding-left: 1rem;
             }
             .top-header {
                 height: auto;
                 flex-direction: column;
-                gap: 1rem;
-                align-items: flex-start;
-                padding: 1rem;
+                gap: 1.5rem;
+                align-items: center;
+                padding: 1.5rem 1rem;
+            }
+            .header-column-left, .header-column-center, .header-column-right {
+                width: 100%;
+                display: flex;
+                justify-content: center;
+                text-align: center;
+            }
+            .header-column-left h1 {
+                align-items: center;
+            }
+            .time-display {
+                font-size: 2.25rem;
             }
             .header-actions {
                 width: 100%;
-                justify-content: space-between;
-                flex-wrap: wrap;
+                flex-direction: column;
+                gap: 1rem;
             }
             .search-container {
                 width: 100%;
                 order: 2;
-                margin-top: 0.5rem;
+                margin-top: 0;
             }
             .btn-add-party-header {
                 order: 1;
@@ -1582,6 +1593,10 @@ export default function Home() {
             }
             .modal-content {
                 padding: 1.5rem;
+            }
+            .res-table th, .res-table td {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.9rem;
             }
         }
       `}</style>
