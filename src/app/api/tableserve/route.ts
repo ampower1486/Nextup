@@ -27,7 +27,13 @@ export async function GET(req: Request) {
 
         if (error) throw error;
 
-        return NextResponse.json({ reservations: data || [] });
+        return NextResponse.json({ reservations: data || [] }, {
+            headers: {
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+            },
+        });
     } catch (error: any) {
         console.error('API Tableserve Error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
