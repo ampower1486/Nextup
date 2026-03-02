@@ -385,6 +385,14 @@ export default function Home() {
             return;
         }
 
+        // Fetch already imported reservation IDs
+        const { data: importedRes } = await supabase
+            .from('waitlist_entries')
+            .select('external_reservation_id')
+            .not('external_reservation_id', 'is', null);
+
+        const importedSet = new Set(importedRes?.map(r => r.external_reservation_id) || []);
+
         if (mappings && mappings.length > 0) {
             const allExtRes: Reservation[] = [];
 
@@ -393,17 +401,19 @@ export default function Home() {
                     const res = await fetch(`/api/tableserve?restaurant_id=${mapping.external_restaurant_id}`);
                     const data = await res.json();
                     if (data.reservations) {
-                        const mapped: Reservation[] = data.reservations.map((r: any) => ({
-                            id: r.id,
-                            name: r.guest_name,
-                            size: r.party_size,
-                            date_time: `${r.date}T${convertToIsoTime(r.time_slot)}`,
-                            phone_number: r.guest_phone,
-                            notes: r.notes,
-                            created_at: r.created_at,
-                            is_shared: r.is_shared,
-                            local_restaurant_id: mapping.local_restaurant_id
-                        }));
+                        const mapped: Reservation[] = data.reservations
+                            .filter((r: any) => !importedSet.has(r.id)) // Prevents checked-in from reappearing
+                            .map((r: any) => ({
+                                id: r.id,
+                                name: r.guest_name,
+                                size: r.party_size,
+                                date_time: `${r.date}T${convertToIsoTime(r.time_slot)}`,
+                                phone_number: r.guest_phone,
+                                notes: r.notes,
+                                created_at: r.created_at,
+                                is_shared: r.is_shared,
+                                local_restaurant_id: mapping.local_restaurant_id
+                            }));
                         allExtRes.push(...mapped);
                     }
                 } catch (err) {
@@ -462,16 +472,17 @@ export default function Home() {
             quoted_time: 0,
             status: 'Waiting',
             is_tableserve: true,
+            external_reservation_id: res.id,
             restaurant_id: assignedRestaurantId,
             user_id: (await supabase.auth.getUser()).data.user?.id
         }]);
 
-        // Sync back to Tableserve: update reservation status to checked_in (or similar)
+        // Sync back to Tableserve: update reservation status to completed so it drops off their incoming list
         try {
             await fetch('/api/external/proxy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'update-status', resId: res.id, status: 'checked_in' })
+                body: JSON.stringify({ action: 'update-status', resId: res.id, status: 'completed' })
             });
         } catch (err) {
             console.error("Tableserve sync-back error:", err);

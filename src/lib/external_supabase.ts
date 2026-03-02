@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Constant credentials for Tablereserve project (Project ID: nzkxcfchmsiaalpcixgq)
 const FALLBACK_URL = 'https://nzkxcfchmsiaalpcixgq.supabase.co';
-const FALLBACK_KEY = 'V49oMo3i0BFLgaEWMIqOah8gDvn4cC_b9hbJ2iExqGo'; // Extracted anon key from successful fetches
+const FALLBACK_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56a3hjZmNobXNpYWFscGNpeGdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5Nzc4NDYsImV4cCI6MjA4NzU1Mzg0Nn0.V49oMo3i0BFLgaEWMIqOah8gDvn4cC_b9hbJ2iExqGo'; // Full valid JWT for fallback
 
 const supabaseUrl = process.env.EXTERNAL_SUPABASE_URL || process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_URL || FALLBACK_URL;
 const supabaseAnonKey = process.env.EXTERNAL_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_ANON_KEY || FALLBACK_KEY;
