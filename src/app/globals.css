@@ -67,33 +67,7 @@ button {
   -webkit-overflow-scrolling: touch;
 }
 
-@media (max-width: 1024px) {
-  .app-container {
-    flex-direction: column !important;
-  }
 
-  .sidebar {
-    width: 100% !important;
-    height: auto !important;
-    flex-direction: row !important;
-    overflow-x: auto;
-  }
-
-  .main-area {
-    height: auto !important;
-    overflow-y: visible !important;
-  }
-
-  .content-layout {
-    flex-direction: column !important;
-  }
-
-  .right-panel {
-    width: 100% !important;
-    border-left: none !important;
-    border-top: 1px solid var(--table-border);
-  }
-}
 
 @media (max-width: 768px) {
 

@@ -1499,6 +1499,9 @@ export default function Home() {
         .btn-close:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3); }
         
         @media (max-width: 1024px) {
+            .app-container {
+                flex-direction: column;
+            }
             .content-layout {
                 flex-direction: column;
                 overflow-y: auto;
@@ -1514,12 +1517,6 @@ export default function Home() {
                 overflow-y: visible;
                 border-left: none;
                 border-top: 1px solid var(--table-border);
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .app-container {
-                flex-direction: column;
             }
             .sidebar {
                 width: 100%;
