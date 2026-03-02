@@ -13,6 +13,7 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
     const [selectedRestaurantId, setSelectedRestaurantId] = useState(restaurantId || '');
     const [restaurants, setRestaurants] = useState<{ id: string, name: string }[]>([]);
     const [loading, setLoading] = useState(false);
+    const [isCustomFocused, setIsCustomFocused] = useState(false);
 
     // Generate options from 5 to 180 in 5 min intervals
     const timeOptions = Array.from({ length: 36 }, (_, i) => (i + 1) * 5);
@@ -112,9 +113,16 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
                                 type="text"
                                 inputMode="numeric"
                                 placeholder="Other"
-                                value={parseInt(size) > 6 || (size !== '' && !['1', '2', '3', '4', '5', '6'].includes(size)) ? size : ''}
+                                value={(isCustomFocused || (size !== '' && !['1', '2', '3', '4', '5', '6'].includes(size))) ? size : ''}
                                 onChange={handleSizeChange}
-                                className={`input-size-other ${parseInt(size) > 6 || (size !== '' && !['1', '2', '3', '4', '5', '6'].includes(size)) ? 'selected-input' : ''}`}
+                                onFocus={() => {
+                                    setIsCustomFocused(true);
+                                    if (['1', '2', '3', '4', '5', '6'].includes(size)) {
+                                        setSize('');
+                                    }
+                                }}
+                                onBlur={() => setIsCustomFocused(false)}
+                                className={`input-size-other ${(size !== '' && !['1', '2', '3', '4', '5', '6'].includes(size)) ? 'selected-input' : ''}`}
                             />
                         </div>
                     </div>
