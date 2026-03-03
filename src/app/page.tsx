@@ -411,9 +411,12 @@ export default function Home() {
                 try {
                     const res = await fetch(`/api/tableserve?restaurant_id=${mapping.external_restaurant_id}`);
                     const data = await res.json();
+                    const todayStr = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD' local format
+
                     if (data.reservations) {
                         const mapped: Reservation[] = data.reservations
                             .filter((r: any) => !importedSet.has(r.id)) // Prevents checked-in from reappearing
+                            .filter((r: any) => r.date >= todayStr) // Prevents past reservations from showing
                             .map((r: any) => ({
                                 id: r.id,
                                 name: r.guest_name,
