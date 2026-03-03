@@ -215,3 +215,64 @@ export async function syncMissingRestaurantsAction() {
         return { success: false, error: err.message || 'Unknown error during sync' };
     }
 }
+
+export async function updateRestaurantAction(id: string, formData: {
+    name: string;
+    address?: string;
+    phone?: string;
+    description?: string;
+    externalId?: string | null;
+}) {
+    const { name, address, phone, description, externalId } = formData;
+    const supabaseLocal = await createLocalClient();
+    const supabaseExternal = createClient(EXTERNAL_URL, EXTERNAL_KEY);
+
+    try {
+        // 1. Update local database
+        const { error: localError } = await supabaseLocal
+            .from('restaurants')
+            .update({ name, address, phone, description })
+            .eq('id', id);
+
+        if (localError) throw new Error(`Local Update Error: ${localError.message}`);
+
+        // Update mapping name just in case
+        await supabaseLocal.from('external_mappings').update({ external_restaurant_name: name }).eq('local_restaurant_id', id);
+
+        // 2. Update external database if linked
+        let warning = undefined;
+        if (externalId) {
+            const { error: extError } = await supabaseExternal
+                .from('restaurants')
+                .update({ name, address, phone, description })
+                .eq('id', externalId);
+
+            if (extError) {
+                console.error("Failed to update external restaurant:", extError);
+                warning = `Restaurant updated locally, but failed to sync changes to Tablereserve: ${extError.message}`;
+            }
+        }
+
+        revalidatePath('/');
+        return { success: true, warning };
+    } catch (err: any) {
+        return { success: false, error: err.message || 'Unknown error during update' };
+    }
+}
+
+export async function deleteExternalRestaurantAction(externalId: string) {
+    const supabaseExternal = createClient(EXTERNAL_URL, EXTERNAL_KEY);
+    try {
+        const { error } = await supabaseExternal
+            .from('restaurants')
+            .delete()
+            .eq('id', externalId);
+
+        if (error) throw new Error(`External Delete Error: ${error.message}`);
+
+        revalidatePath('/');
+        return { success: true };
+    } catch (err: any) {
+        return { success: false, error: err.message || 'Unknown error during external deletion' };
+    }
+}

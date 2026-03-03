@@ -8,7 +8,8 @@ import WaitlistTable from '@/components/WaitlistTable';
 import CreateRestaurantForm from '@/components/CreateRestaurantForm';
 import { WaitlistEntry } from '@/lib/supabase';
 import { createClient } from '@/utils/supabase/client';
-import { createRestaurantAction, deleteRestaurantAction, syncMissingRestaurantsAction } from '@/app/actions/restaurant';
+import { createRestaurantAction, deleteRestaurantAction, syncMissingRestaurantsAction, deleteExternalRestaurantAction } from '@/app/actions/restaurant';
+import EditRestaurantForm from '@/components/EditRestaurantForm';
 import { UtensilsCrossed, ClipboardList, Calendar, Clock, BarChart2, Settings, LogOut, Search, Plus, ArrowLeftRight, ShieldAlert, Globe, Loader2 } from 'lucide-react';
 
 interface Reservation {
@@ -43,14 +44,16 @@ export default function Home() {
     const [userRole, setUserRole] = useState<'restaurant' | 'admin' | 'staff'>('restaurant');
     const [allProfiles, setAllProfiles] = useState<Record<string, { name: string, email: string, role: string, restaurant_id: string }>>({});
     const [profilesList, setProfilesList] = useState<{ id: string, name: string, email: string, role: string, restaurant_id: string }[]>([]);
-    const [allRestaurants, setAllRestaurants] = useState<{ id: string, name: string }[]>([]);
+    const [allRestaurants, setAllRestaurants] = useState<{ id: string, name: string, address?: string, phone?: string, description?: string }[]>([]);
     const [defaultSmsMessage, setDefaultSmsMessage] = useState('Your table is ready! Please head to the host stand.');
     const [authUserEmail, setAuthUserEmail] = useState<string | null>(null);
     const [isResetConfirming, setIsResetConfirming] = useState(false);
     const [sortColumn, setSortColumn] = useState<string | null>(null);
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [isDeletingResto, setIsDeletingResto] = useState<string | null>(null);
+    const [isDeletingExtResto, setIsDeletingExtResto] = useState<string | null>(null);
     const [isSyncingRestaurants, setIsSyncingRestaurants] = useState(false);
+    const [editingRestaurant, setEditingRestaurant] = useState<{ id: string, name: string, address?: string, phone?: string, description?: string, externalId?: string | null } | null>(null);
 
     useEffect(() => {
         const getProfile = async () => {
@@ -1027,23 +1030,39 @@ export default function Home() {
                                                             <strong style={{ display: 'block', color: '#0f172a', fontSize: '1.1rem' }}>{rest.name}</strong>
                                                             {mapping && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Linked to Tablereserve</span>}
                                                         </div>
-                                                        <button
-                                                            disabled={isDeletingResto === rest.id}
-                                                            onClick={async () => {
-                                                                if (confirm(`Are you sure you want to permanently delete ${rest.name}?`)) {
-                                                                    setIsDeletingResto(rest.id);
-                                                                    const res = await deleteRestaurantAction(rest.id, mapping?.external_restaurant_id);
-                                                                    setIsDeletingResto(null);
-                                                                    if (res.success) {
-                                                                        window.location.reload();
-                                                                    } else {
-                                                                        alert(res.error || 'Failed to delete restaurant.');
+                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingRestaurant({
+                                                                        id: rest.id,
+                                                                        name: rest.name,
+                                                                        address: rest.address || '',
+                                                                        phone: rest.phone || '',
+                                                                        description: rest.description || '',
+                                                                        externalId: mapping?.external_restaurant_id
+                                                                    });
+                                                                }}
+                                                                style={{ padding: '0.5rem 1rem', background: '#eff6ff', color: '#3b82f6', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                disabled={isDeletingResto === rest.id}
+                                                                onClick={async () => {
+                                                                    if (confirm(`Are you sure you want to permanently delete ${rest.name}?`)) {
+                                                                        setIsDeletingResto(rest.id);
+                                                                        const res = await deleteRestaurantAction(rest.id, mapping?.external_restaurant_id);
+                                                                        setIsDeletingResto(null);
+                                                                        if (res.success) {
+                                                                            window.location.reload();
+                                                                        } else {
+                                                                            alert(res.error || 'Failed to delete restaurant.');
+                                                                        }
                                                                     }
-                                                                }
-                                                            }}
-                                                            style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', cursor: isDeletingResto === rest.id ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
-                                                            {isDeletingResto === rest.id ? 'Deleting...' : 'Delete'}
-                                                        </button>
+                                                                }}
+                                                                style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', cursor: isDeletingResto === rest.id ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
+                                                                {isDeletingResto === rest.id ? 'Deleting...' : 'Delete'}
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 );
                                             })}
@@ -1083,25 +1102,63 @@ export default function Home() {
                                                                 </span>
                                                             </div>
                                                             {isLinked ? null : (
-                                                                <button
-                                                                    onClick={async () => {
-                                                                        const matched = allRestaurants.find(r => r.name.toLowerCase().includes(ext.name.toLowerCase()) || ext.name.toLowerCase().includes(r.name.toLowerCase()));
-                                                                        if (matched) {
-                                                                            await supabase.from('external_mappings').insert({
-                                                                                local_restaurant_id: matched.id,
-                                                                                external_restaurant_id: ext.id,
-                                                                                external_restaurant_name: ext.name
-                                                                            });
-                                                                            fetchExternalMappings();
-                                                                            fetchReservations();
-                                                                        } else {
-                                                                            alert("Could not find a matching local restaurant for " + ext.name);
-                                                                        }
-                                                                    }}
-                                                                    style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', color: '#1e293b', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}
-                                                                >
-                                                                    Auto-Link
-                                                                </button>
+                                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                                    <button
+                                                                        disabled={isDeletingExtResto === ext.id}
+                                                                        onClick={async () => {
+                                                                            if (confirm(`Are you sure you want to permanently delete the external stray restaurant "${ext.name}" from Tablereserve?`)) {
+                                                                                setIsDeletingExtResto(ext.id);
+                                                                                const res = await deleteExternalRestaurantAction(ext.id);
+                                                                                setIsDeletingExtResto(null);
+                                                                                if (res.success) {
+                                                                                    fetchExternalMappings();
+                                                                                    fetchReservations(); // re-fetch external list
+                                                                                    alert(`${ext.name} deleted successfully.`);
+                                                                                } else {
+                                                                                    alert(res.error || 'Failed to delete external restaurant');
+                                                                                }
+                                                                            }
+                                                                        }}
+                                                                        style={{
+                                                                            padding: '0.4rem 0.8rem',
+                                                                            background: '#fee2e2',
+                                                                            color: '#ef4444',
+                                                                            border: 'none',
+                                                                            borderRadius: '6px',
+                                                                            fontSize: '0.75rem',
+                                                                            fontWeight: 'bold',
+                                                                            cursor: isDeletingExtResto === ext.id ? 'not-allowed' : 'pointer'
+                                                                        }}
+                                                                    >
+                                                                        {isDeletingExtResto === ext.id ? '...' : 'Delete'}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            const matched = allRestaurants.find(r => r.name.toLowerCase().includes(ext.name.toLowerCase()) || ext.name.toLowerCase().includes(r.name.toLowerCase()));
+                                                                            if (matched) {
+                                                                                await supabase.from('external_mappings').insert({
+                                                                                    local_restaurant_id: matched.id,
+                                                                                    external_restaurant_id: ext.id,
+                                                                                    external_restaurant_name: ext.name
+                                                                                });
+                                                                                fetchExternalMappings();
+                                                                                fetchReservations();
+                                                                            } else {
+                                                                                alert("Could not find a matching local restaurant for " + ext.name);
+                                                                            }
+                                                                        }}
+                                                                        style={{
+                                                                            padding: '0.4rem 0.8rem',
+                                                                            background: '#f8fafc',
+                                                                            border: '1px solid #cbd5e1',
+                                                                            borderRadius: '6px',
+                                                                            fontSize: '0.75rem',
+                                                                            cursor: 'pointer'
+                                                                        }}
+                                                                    >
+                                                                        Auto-Link
+                                                                    </button>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     );
@@ -1174,7 +1231,19 @@ export default function Home() {
                 <CreateRestaurantForm
                     onClose={() => setIsCreateRestoOpen(false)}
                     onCreated={() => {
-                        window.location.reload();
+                        fetchRestaurants();
+                    }}
+                />
+            )}
+
+            {editingRestaurant && (
+                <EditRestaurantForm
+                    restaurant={editingRestaurant}
+                    externalId={editingRestaurant.externalId}
+                    onClose={() => setEditingRestaurant(null)}
+                    onUpdated={() => {
+                        fetchRestaurants();
+                        setEditingRestaurant(null);
                     }}
                 />
             )}
