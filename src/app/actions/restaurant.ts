@@ -4,8 +4,9 @@ import { createClient as createLocalClient } from '@/utils/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 
-const EXTERNAL_URL = process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_URL || 'https://nzkxcfchmsiaalpcixgq.supabase.co';
-const EXTERNAL_KEY = process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56a3hjZmNobXNpYWFscGNpeGdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5Nzc4NDYsImV4cCI6MjA4NzU1Mzg0Nn0.V49oMo3i0BFLgaEWMIqOah8gDvn4cC_b9hbJ2iExqGo';
+// Hardcode completely to bypass any incorrect Vercel environment variables
+const EXTERNAL_URL = 'https://nzkxcfchmsiaalpcixgq.supabase.co';
+const EXTERNAL_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56a3hjZmNobXNpYWFscGNpeGdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5Nzc4NDYsImV4cCI6MjA4NzU1Mzg0Nn0.V49oMo3i0BFLgaEWMIqOah8gDvn4cC_b9hbJ2iExqGo';
 
 export async function createRestaurantAction(formData: {
     name: string;
