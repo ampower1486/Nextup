@@ -8,8 +8,8 @@ import WaitlistTable from '@/components/WaitlistTable';
 import CreateRestaurantForm from '@/components/CreateRestaurantForm';
 import { WaitlistEntry } from '@/lib/supabase';
 import { createClient } from '@/utils/supabase/client';
-import { deleteRestaurantAction } from '@/app/actions/restaurant';
-import { UtensilsCrossed, ClipboardList, Calendar, Clock, BarChart2, Settings, LogOut, Search, Plus, ArrowLeftRight, ShieldAlert, Globe } from 'lucide-react';
+import { createRestaurantAction, deleteRestaurantAction, syncMissingRestaurantsAction } from '@/app/actions/restaurant';
+import { UtensilsCrossed, ClipboardList, Calendar, Clock, BarChart2, Settings, LogOut, Search, Plus, ArrowLeftRight, ShieldAlert, Globe, Loader2 } from 'lucide-react';
 
 interface Reservation {
     id: string;
@@ -50,6 +50,7 @@ export default function Home() {
     const [sortColumn, setSortColumn] = useState<string | null>(null);
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [isDeletingResto, setIsDeletingResto] = useState<string | null>(null);
+    const [isSyncingRestaurants, setIsSyncingRestaurants] = useState(false);
 
     useEffect(() => {
         const getProfile = async () => {
@@ -984,7 +985,36 @@ export default function Home() {
                                 </div>
 
                                 <div style={{ borderTop: '4px solid var(--table-border)', paddingTop: '2rem', marginBottom: '4rem' }}>
-                                    <h2 style={{ padding: '0 2rem 0.5rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Manage Nextup Restaurants</h2>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 2rem 0.5rem' }}>
+                                        <h2 style={{ margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Manage Nextup Restaurants</h2>
+                                        <button
+                                            onClick={async () => {
+                                                setIsSyncingRestaurants(true);
+                                                const res = await syncMissingRestaurantsAction();
+                                                setIsSyncingRestaurants(false);
+                                                if (res.message) alert(res.message);
+                                                if (res.error) alert(res.error);
+                                                if (res.success) fetchRestaurants();
+                                            }}
+                                            disabled={isSyncingRestaurants}
+                                            style={{
+                                                padding: '0.75rem 1.5rem',
+                                                background: '#3b82f6',
+                                                color: 'white',
+                                                borderRadius: '8px',
+                                                border: 'none',
+                                                fontWeight: '600',
+                                                cursor: isSyncingRestaurants ? 'not-allowed' : 'pointer',
+                                                opacity: isSyncingRestaurants ? 0.7 : 1,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem'
+                                            }}
+                                        >
+                                            {isSyncingRestaurants ? <Loader2 size={16} className="animate-spin" /> : <UtensilsCrossed size={16} />}
+                                            {isSyncingRestaurants ? 'Syncing...' : 'Sync Missing from Tablereserve'}
+                                        </button>
+                                    </div>
                                     <p style={{ padding: '0 2rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Delete restaurants you no longer need. Deleting a restaurant will unassign its staff and remove its active waitlist data.</p>
 
                                     <div style={{ padding: '0 2rem' }}>

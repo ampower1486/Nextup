@@ -158,3 +158,60 @@ export async function deleteRestaurantAction(id: string, externalId?: string | n
         return { success: false, error: err.message || 'Unknown error during deletion' };
     }
 }
+
+export async function syncMissingRestaurantsAction() {
+    const supabaseLocal = await createLocalClient();
+    const supabaseExternal = createClient(EXTERNAL_URL, EXTERNAL_KEY);
+
+    try {
+        // 1. Fetch all external
+        const { data: externalData, error: extError } = await supabaseExternal.from('restaurants').select('*');
+        if (extError) throw new Error(`External Fetch Error: ${extError.message}`);
+
+        // 2. Fetch all local
+        const { data: localData, error: locError } = await supabaseLocal.from('restaurants').select('*');
+        if (locError) throw new Error(`Local Fetch Error: ${locError.message}`);
+
+        // 3. Find missing
+        const externalIdsInLocal = new Set(localData?.map(r => r.tableserve_id).filter(Boolean));
+        const missingRestaurants = externalData?.filter(r => !externalIdsInLocal.has(r.id)) || [];
+
+        if (missingRestaurants.length === 0) {
+            return { success: true, message: 'All restaurants are already synced.' };
+        }
+
+        // 4. Insert missing into local
+        let syncedCount = 0;
+        for (const ext of missingRestaurants) {
+            const { data: newLocal, error: insertError } = await supabaseLocal
+                .from('restaurants')
+                .insert([{
+                    name: ext.name,
+                    slug: ext.slug + '-' + Math.random().toString(36).substring(2, 7), // Ensure unique slug
+                    address: ext.address,
+                    phone: ext.phone,
+                    description: ext.description,
+                    tableserve_id: ext.id
+                }])
+                .select()
+                .single();
+
+            if (!insertError && newLocal) {
+                // Generate automated mapping
+                await supabaseLocal.from('external_mappings').insert([{
+                    local_restaurant_id: newLocal.id,
+                    external_restaurant_id: ext.id,
+                    external_restaurant_name: ext.name
+                }]);
+                syncedCount++;
+            } else {
+                console.error("Failed to insert missing restaurant:", ext.name, insertError);
+            }
+        }
+
+        revalidatePath('/');
+        return { success: true, message: `Successfully synced ${syncedCount} missing restaurants from Tablereserve.` };
+    } catch (err: any) {
+        return { success: false, error: err.message || 'Unknown error during sync' };
+    }
+}
