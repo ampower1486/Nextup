@@ -4,8 +4,8 @@ import { createClient as createLocalClient } from '@/utils/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 
-const EXTERNAL_URL = process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_URL!;
-const EXTERNAL_KEY = process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_ANON_KEY!;
+const EXTERNAL_URL = process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_URL || 'https://nzkxcfchmsiaalpcixgq.supabase.co';
+const EXTERNAL_KEY = process.env.NEXT_PUBLIC_EXTERNAL_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56a3hjZmNobXNpYWFscGNpeGdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5Nzc4NDYsImV4cCI6MjA4NzU1Mzg0Nn0.V49oMo3i0BFLgaEWMIqOah8gDvn4cC_b9hbJ2iExqGo';
 
 export async function createRestaurantAction(formData: {
     name: string;
@@ -27,20 +27,34 @@ export async function createRestaurantAction(formData: {
     const supabaseExternal = createClient(EXTERNAL_URL, EXTERNAL_KEY);
 
     // 2. Insert into External (Tablereserve) first to get the ID
-    const { data: externalData, error: externalError } = await supabaseExternal
-        .from('restaurants')
-        .insert([{
-            name,
-            slug,
-            address: address || null,
-            phone: phone || null,
-            description: description || null
-        }])
-        .select('id')
-        .single();
+    let tId = null;
+    let externalErrorObj = null;
 
-    if (externalError) {
-        console.error("External Sync Error:", externalError);
+    try {
+        const { data: externalData, error: externalError } = await supabaseExternal
+            .from('restaurants')
+            .insert([{
+                name,
+                slug,
+                address: address || null,
+                phone: phone || null,
+                description: description || null
+            }])
+            .select('id')
+            .single();
+
+        if (externalError) {
+            console.error("External Sync Error:", externalError);
+            externalErrorObj = externalError;
+        } else {
+            tId = externalData.id;
+        }
+    } catch (err: any) {
+        console.error("External Sync Exception:", err);
+        externalErrorObj = { message: err.message || 'Unknown error inserting to external DB' };
+    }
+
+    if (!tId) {
         // If external fails, we might still want to create local, but the user wants them synced.
         // Let's try to create local anyway but warn.
         const { data: localData, error: localError } = await supabaseLocal
@@ -53,11 +67,9 @@ export async function createRestaurantAction(formData: {
             success: !localError,
             data: localData,
             error: localError?.message,
-            warning: `Restaurant created locally, but failed to sync to Tablereserve: ${externalError.message}`
+            warning: `Restaurant created locally, but failed to sync to Tablereserve: ${externalErrorObj?.message}`
         };
     }
-
-    const tId = externalData.id;
 
     // 3. Insert into Local (Nextup) with the external ID as tableserve_id
     const { data: localData, error: localError } = await supabaseLocal
@@ -74,6 +86,8 @@ export async function createRestaurantAction(formData: {
         .single();
 
     if (localError) {
+        // If local fails after external succeeded, we should probably warn or delete external. 
+        // For now, return the error.
         return { success: false, error: `Local Error: ${localError.message}` };
     }
 
