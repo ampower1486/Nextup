@@ -8,6 +8,7 @@ import WaitlistTable from '@/components/WaitlistTable';
 import CreateRestaurantForm from '@/components/CreateRestaurantForm';
 import { WaitlistEntry } from '@/lib/supabase';
 import { createClient } from '@/utils/supabase/client';
+import { deleteRestaurantAction } from '@/app/actions/restaurant';
 import { UtensilsCrossed, ClipboardList, Calendar, Clock, BarChart2, Settings, LogOut, Search, Plus, ArrowLeftRight, ShieldAlert, Globe } from 'lucide-react';
 
 interface Reservation {
@@ -32,7 +33,7 @@ export default function Home() {
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [resFilter, setResFilter] = useState<'week' | 'month'>('month');
     const [externalRestaurants, setExternalRestaurants] = useState<{ id: string, name: string }[]>([]);
-    const [externalMappings, setExternalMappings] = useState<{ user_id: string, external_restaurant_id: string, external_restaurant_name: string }[]>([]);
+    const [externalMappings, setExternalMappings] = useState<{ local_restaurant_id: string, external_restaurant_id: string, external_restaurant_name: string }[]>([]);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [isCreateRestoOpen, setIsCreateRestoOpen] = useState(false);
@@ -46,6 +47,9 @@ export default function Home() {
     const [defaultSmsMessage, setDefaultSmsMessage] = useState('Your table is ready! Please head to the host stand.');
     const [authUserEmail, setAuthUserEmail] = useState<string | null>(null);
     const [isResetConfirming, setIsResetConfirming] = useState(false);
+    const [sortColumn, setSortColumn] = useState<string | null>(null);
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+    const [isDeletingResto, setIsDeletingResto] = useState<string | null>(null);
 
     useEffect(() => {
         const getProfile = async () => {
@@ -497,6 +501,36 @@ export default function Home() {
 
         setReservations(prev => prev.filter(r => r.id !== res.id));
     }
+
+    const handleSort = (column: string) => {
+        if (sortColumn === column) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(column);
+            setSortDirection('asc');
+        }
+    };
+
+    const sortedProfiles = [...profilesList].sort((a, b) => {
+        if (!sortColumn) return 0;
+        let valA = a[sortColumn as keyof typeof a] || '';
+        let valB = b[sortColumn as keyof typeof b] || '';
+
+        if (sortColumn === 'assigned_restaurant') {
+            valA = allRestaurants.find(r => r.id === a.restaurant_id)?.name || '';
+            valB = allRestaurants.find(r => r.id === b.restaurant_id)?.name || '';
+        }
+
+        if (typeof valA === 'string' && typeof valB === 'string') {
+            valA = valA.toLowerCase();
+            valB = valB.toLowerCase();
+        }
+
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+
     const effectiveAdmin = (userRole === 'admin');
 
     return (
@@ -880,17 +914,17 @@ export default function Home() {
                                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                         <thead>
                                             <tr>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>STAFF / ADMIN</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>EMAIL</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>ROLE</th>
-                                                <th style={{ padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>ASSIGNED RESTAURANT</th>
+                                                <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>STAFF / ADMIN {sortColumn === 'name' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                                                <th onClick={() => handleSort('email')} style={{ cursor: 'pointer', padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>EMAIL {sortColumn === 'email' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                                                <th onClick={() => handleSort('role')} style={{ cursor: 'pointer', padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>ROLE {sortColumn === 'role' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                                                <th onClick={() => handleSort('assigned_restaurant')} style={{ cursor: 'pointer', padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>ASSIGNED RESTAURANT {sortColumn === 'assigned_restaurant' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {profilesList.length === 0 ? (
+                                            {sortedProfiles.length === 0 ? (
                                                 <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No profiles found.</td></tr>
                                             ) : null}
-                                            {profilesList.map(profile => (
+                                            {sortedProfiles.map(profile => (
                                                 <tr key={profile.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
                                                     <td style={{ padding: '1.25rem 2rem' }}><strong style={{ color: 'var(--text-primary)' }}>{profile.name}</strong></td>
                                                     <td style={{ padding: '1.25rem 2rem' }}><span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{profile.email}</span></td>
@@ -944,6 +978,44 @@ export default function Home() {
                                             ))}
                                         </tbody>
                                     </table>
+                                </div>
+
+                                <div style={{ borderTop: '4px solid var(--table-border)', paddingTop: '2rem', marginBottom: '4rem' }}>
+                                    <h2 style={{ padding: '0 2rem 0.5rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Manage Nextup Restaurants</h2>
+                                    <p style={{ padding: '0 2rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Delete restaurants you no longer need. Deleting a restaurant will unassign its staff and remove its active waitlist data.</p>
+
+                                    <div style={{ padding: '0 2rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                                            {allRestaurants.map(rest => {
+                                                const mapping = externalMappings.find(m => m.local_restaurant_id === rest.id);
+                                                return (
+                                                    <div key={rest.id} style={{ padding: '1.5rem', borderRadius: '12px', background: 'white', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div>
+                                                            <strong style={{ display: 'block', color: '#0f172a', fontSize: '1.1rem' }}>{rest.name}</strong>
+                                                            {mapping && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Linked to Tablereserve</span>}
+                                                        </div>
+                                                        <button
+                                                            disabled={isDeletingResto === rest.id}
+                                                            onClick={async () => {
+                                                                if (confirm(`Are you sure you want to permanently delete ${rest.name}?`)) {
+                                                                    setIsDeletingResto(rest.id);
+                                                                    const res = await deleteRestaurantAction(rest.id, mapping?.external_restaurant_id);
+                                                                    setIsDeletingResto(null);
+                                                                    if (res.success) {
+                                                                        window.location.reload();
+                                                                    } else {
+                                                                        alert(res.error || 'Failed to delete restaurant.');
+                                                                    }
+                                                                }
+                                                            }}
+                                                            style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', cursor: isDeletingResto === rest.id ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
+                                                            {isDeletingResto === rest.id ? 'Deleting...' : 'Delete'}
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div style={{ borderTop: '4px solid var(--table-border)', paddingTop: '2rem' }}>

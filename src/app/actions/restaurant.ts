@@ -115,3 +115,46 @@ export async function createRestaurantAction(formData: {
     revalidatePath('/');
     return { success: true, data: localData };
 }
+
+export async function deleteRestaurantAction(id: string, externalId?: string | null) {
+    const supabaseLocal = await createLocalClient();
+    const supabaseExternal = createClient(EXTERNAL_URL, EXTERNAL_KEY);
+
+    try {
+        // 1. Delete from external Tablereserve if applicable
+        if (externalId && externalId.trim() !== '') {
+            const { error: extError } = await supabaseExternal
+                .from('restaurants')
+                .delete()
+                .eq('id', externalId);
+            if (extError) {
+                console.error("Failed to delete external restaurant:", extError);
+                // Non-blocking but warn
+            }
+        }
+
+        // 2. Delete local mapping
+        await supabaseLocal
+            .from('external_mappings')
+            .delete()
+            .eq('local_restaurant_id', id);
+
+        // 3. Unassign profiles from this restaurant
+        await supabaseLocal.from('profiles').update({ restaurant_id: null }).eq('restaurant_id', id);
+
+        // 4. Delete local restaurant
+        const { error: localError } = await supabaseLocal
+            .from('restaurants')
+            .delete()
+            .eq('id', id);
+
+        if (localError) {
+            return { success: false, error: localError.message };
+        }
+
+        revalidatePath('/');
+        return { success: true };
+    } catch (err: any) {
+        return { success: false, error: err.message || 'Unknown error during deletion' };
+    }
+}
