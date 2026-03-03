@@ -13,7 +13,7 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
     const [selectedRestaurantId, setSelectedRestaurantId] = useState(restaurantId || '');
     const [restaurants, setRestaurants] = useState<{ id: string, name: string }[]>([]);
     const [loading, setLoading] = useState(false);
-    const [customSize, setCustomSize] = useState('');
+    const [isManualSize, setIsManualSize] = useState(false);
 
     // Generate options from 5 to 180 in 5 min intervals
     const timeOptions = Array.from({ length: 36 }, (_, i) => (i + 1) * 5);
@@ -33,9 +33,8 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
 
     const handleSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value.replace(/\D/g, ''); // Number only
-        if (val === '' || (parseInt(val) >= 1 && parseInt(val) <= 99)) {
+        if (val === '' || (parseInt(val) >= 1 && parseInt(val) <= 999)) {
             setSize(val);
-            setCustomSize(val);
         }
     };
 
@@ -99,26 +98,35 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
                     </div>
                     <div className="form-group">
                         <label>Size</label>
-                        <div className="size-selector-grid">
-                            {[1, 2, 3, 4, 5, 6].map(num => (
-                                <button
-                                    type="button"
-                                    key={num}
-                                    className={`btn-size ${size === num.toString() ? 'selected' : ''}`}
-                                    onClick={() => { setSize(num.toString()); setCustomSize(''); }}
-                                >
-                                    {num}
-                                </button>
+                        <select
+                            value={isManualSize ? 'other' : size}
+                            onChange={(e) => {
+                                if (e.target.value === 'other') {
+                                    setIsManualSize(true);
+                                    setSize('');
+                                } else {
+                                    setIsManualSize(false);
+                                    setSize(e.target.value);
+                                }
+                            }}
+                        >
+                            <option value="" disabled>Select party size</option>
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(num => (
+                                <option key={num} value={num.toString()}>{num}</option>
                             ))}
+                            <option value="other">Other (Manual)</option>
+                        </select>
+                        {isManualSize && (
                             <input
                                 type="text"
                                 inputMode="numeric"
-                                placeholder="Other"
-                                value={customSize}
+                                placeholder="Enter size manually"
+                                value={size}
                                 onChange={handleSizeChange}
-                                className={`input-size-other ${customSize !== '' ? 'selected-input' : ''}`}
+                                style={{ marginTop: '0.5rem' }}
+                                required
                             />
-                        </div>
+                        )}
                     </div>
                     <div className="form-group">
                         <label>Phone Number</label>
@@ -143,6 +151,7 @@ export default function AddPartyForm({ onClose, onCreated, restaurantId, isAllAd
                     <div className="form-group">
                         <label>Quoted Wait Time</label>
                         <select value={quotedTime} onChange={e => setQuotedTime(e.target.value)}>
+                            <option value="0">No Wait</option>
                             {timeOptions.map(min => (
                                 <option key={min} value={min}>
                                     {min >= 60 ? `${Math.floor(min / 60)} hr ${min % 60 > 0 ? min % 60 + ' min' : ''}`.trim() : `${min} min`}
