@@ -12,4 +12,6 @@ export interface WaitlistEntry {
     phone_number?: string;
     is_tableserve: boolean;
     restaurant_id?: string;
+    server_id?: string;
+    section_id?: string;
 }

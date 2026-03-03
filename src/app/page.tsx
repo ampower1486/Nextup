@@ -24,6 +24,18 @@ interface Reservation {
     local_restaurant_id?: string;
 }
 
+interface ServerItem {
+    id: string;
+    name: string;
+    restaurant_id: string;
+}
+
+interface SectionItem {
+    id: string;
+    name: string;
+    restaurant_id: string;
+}
+
 const supabase = createClient();
 
 export default function Home() {
@@ -54,6 +66,12 @@ export default function Home() {
     const [isDeletingExtResto, setIsDeletingExtResto] = useState<string | null>(null);
     const [isSyncingRestaurants, setIsSyncingRestaurants] = useState(false);
     const [editingRestaurant, setEditingRestaurant] = useState<{ id: string, name: string, address?: string, phone?: string, description?: string, externalId?: string | null } | null>(null);
+
+    // New states for Section & Server
+    const [servers, setServers] = useState<ServerItem[]>([]);
+    const [sections, setSections] = useState<SectionItem[]>([]);
+    const [newServerName, setNewServerName] = useState('');
+    const [newSectionName, setNewSectionName] = useState('');
 
     useEffect(() => {
         const getProfile = async () => {
@@ -204,6 +222,10 @@ export default function Home() {
             fetchExternalMappings();
         }
 
+        if (restaurantId) {
+            fetchServersAndSections();
+        }
+
         const channel = supabase
             .channel('schema-db-changes')
             .on(
@@ -296,6 +318,44 @@ export default function Home() {
         if (error) console.error("Error fetching past entries:", error);
         if (data) setPastEntries(data as WaitlistEntry[]);
     }
+
+    async function fetchServersAndSections() {
+        if (!restaurantId || restaurantId === 'null') return;
+
+        const [servRes, sectRes] = await Promise.all([
+            supabase.from('waitlist_servers').select('*').eq('restaurant_id', restaurantId).order('created_at', { ascending: true }),
+            supabase.from('waitlist_sections').select('*').eq('restaurant_id', restaurantId).order('created_at', { ascending: true })
+        ]);
+
+        if (servRes.data) setServers(servRes.data);
+        if (sectRes.data) setSections(sectRes.data);
+    }
+
+    const handleAddServer = async () => {
+        if (!newServerName.trim() || !restaurantId) return;
+        await supabase.from('waitlist_servers').insert([{ name: newServerName.trim(), restaurant_id: restaurantId }]);
+        setNewServerName('');
+        fetchServersAndSections();
+    };
+
+    const handleDeleteServer = async (id: string) => {
+        if (!confirm('Area you sure you want to delete this server?')) return;
+        await supabase.from('waitlist_servers').delete().eq('id', id);
+        fetchServersAndSections();
+    };
+
+    const handleAddSection = async () => {
+        if (!newSectionName.trim() || !restaurantId) return;
+        await supabase.from('waitlist_sections').insert([{ name: newSectionName.trim(), restaurant_id: restaurantId }]);
+        setNewSectionName('');
+        fetchServersAndSections();
+    };
+
+    const handleDeleteSection = async (id: string) => {
+        if (!confirm('Area you sure you want to delete this section?')) return;
+        await supabase.from('waitlist_sections').delete().eq('id', id);
+        fetchServersAndSections();
+    };
 
     const restoreParty = async (id: string) => {
         await supabase.from('waitlist_entries').update({ status: 'Waiting' }).eq('id', id);
@@ -619,7 +679,7 @@ export default function Home() {
 
                 <div className="content-layout">
                     <div className="left-panel">
-                        {currentTab === 'Waitlist' && <WaitlistTable entries={entries} defaultSmsMessage={defaultSmsMessage} />}
+                        {currentTab === 'Waitlist' && <WaitlistTable entries={entries} defaultSmsMessage={defaultSmsMessage} servers={servers} sections={sections} fetchEntries={fetchEntries} fetchPastEntries={fetchPastEntries} />}
 
                         {currentTab === 'Reservations' && (
                             <div>
@@ -740,11 +800,13 @@ export default function Home() {
                             <div>
                                 <h2 style={{ padding: '2rem 2rem 1rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Recent Activity</h2>
                                 <div className="table-responsive-wrapper">
-                                    <table className="res-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '650px' }}>
+                                    <table className="res-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '850px' }}>
                                         <thead>
                                             <tr>
                                                 <th>PARTY</th>
                                                 <th>SIZE</th>
+                                                <th>SERVER</th>
+                                                <th>SECTION</th>
                                                 <th>STATUS</th>
                                                 <th>TIME ADDED</th>
                                                 <th>TIME SEATED / CANCELED</th>
@@ -753,7 +815,7 @@ export default function Home() {
                                         </thead>
                                         <tbody>
                                             {pastEntries.length === 0 ? (
-                                                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No recent activity.</td></tr>
+                                                <tr><td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No recent activity.</td></tr>
                                             ) : null}
                                             {pastEntries.map(entry => (
                                                 <tr key={entry.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
@@ -764,6 +826,12 @@ export default function Home() {
                                                         </div>
                                                     </td>
                                                     <td><span style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{entry.party_size}</span></td>
+                                                    <td style={{ color: 'var(--text-secondary)' }}>
+                                                        {entry.server_id ? servers.find(s => s.id === entry.server_id)?.name || 'Unknown' : '-'}
+                                                    </td>
+                                                    <td style={{ color: 'var(--text-secondary)' }}>
+                                                        {entry.section_id ? sections.find(s => s.id === entry.section_id)?.name || 'Unknown' : '-'}
+                                                    </td>
                                                     <td>
                                                         <span style={{
                                                             padding: '4px 8px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold',
@@ -804,6 +872,38 @@ export default function Home() {
                                     <div className="metric-card banana-glow banana-green" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--table-border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                                         <span style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{entries.length}</span>
                                         <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '0.5rem' }}>Currently Waiting</span>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
+                                    <div className="stats-box" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--table-border)' }}>
+                                        <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', color: 'var(--text-primary)' }}>Seated by Server (Today)</h3>
+                                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                            {servers.length === 0 ? <li style={{ color: '#888', fontStyle: 'italic', fontSize: '0.9rem' }}>No servers configured.</li> : null}
+                                            {servers.map(server => {
+                                                const seatedCount = pastEntries.filter(e => e.status === 'Seated' && e.server_id === server.id).length;
+                                                return (
+                                                    <li key={server.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: '#f8fafc', borderRadius: '8px' }}>
+                                                        <span style={{ fontWeight: '600' }}>{server.name}</span>
+                                                        <span style={{ background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}>{seatedCount}</span>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    </div>
+                                    <div className="stats-box" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--table-border)' }}>
+                                        <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', color: 'var(--text-primary)' }}>Seated by Section (Today)</h3>
+                                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                            {sections.length === 0 ? <li style={{ color: '#888', fontStyle: 'italic', fontSize: '0.9rem' }}>No sections configured.</li> : null}
+                                            {sections.map(section => {
+                                                const seatedCount = pastEntries.filter(e => e.status === 'Seated' && e.section_id === section.id).length;
+                                                return (
+                                                    <li key={section.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: '#f8fafc', borderRadius: '8px' }}>
+                                                        <span style={{ fontWeight: '600' }}>{section.name}</span>
+                                                        <span style={{ background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}>{seatedCount}</span>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
                                     </div>
                                 </div>
                             </div>
@@ -1277,6 +1377,54 @@ export default function Home() {
                                 className="settings-input"
                                 rows={3}
                             />
+
+                            <div style={{ marginTop: '2rem', borderTop: '2px solid var(--table-border)', paddingTop: '1.5rem' }}>
+                                <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', color: 'var(--text-primary)' }}>Servers</h3>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Add Server Name"
+                                        value={newServerName}
+                                        onChange={e => setNewServerName(e.target.value)}
+                                        className="settings-input"
+                                        style={{ margin: 0, flex: 1 }}
+                                    />
+                                    <button onClick={handleAddServer} style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', padding: '0 1rem', fontWeight: 'bold', cursor: 'pointer' }}>Add</button>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {servers.map(s => (
+                                        <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', alignItems: 'center' }}>
+                                            <span>{s.name}</span>
+                                            <button onClick={() => handleDeleteServer(s.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer', padding: '0.2rem' }}>X</button>
+                                        </div>
+                                    ))}
+                                    {servers.length === 0 && <span style={{ fontSize: '0.85rem', color: '#888' }}>No servers added yet.</span>}
+                                </div>
+                            </div>
+
+                            <div style={{ marginTop: '2rem', borderTop: '2px solid var(--table-border)', paddingTop: '1.5rem' }}>
+                                <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', color: 'var(--text-primary)' }}>Sections (1-10, Patio, etc.)</h3>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Add Section Name/Number"
+                                        value={newSectionName}
+                                        onChange={e => setNewSectionName(e.target.value)}
+                                        className="settings-input"
+                                        style={{ margin: 0, flex: 1 }}
+                                    />
+                                    <button onClick={handleAddSection} style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', padding: '0 1rem', fontWeight: 'bold', cursor: 'pointer' }}>Add</button>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {sections.map(s => (
+                                        <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', alignItems: 'center' }}>
+                                            <span>{s.name}</span>
+                                            <button onClick={() => handleDeleteSection(s.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer', padding: '0.2rem' }}>X</button>
+                                        </div>
+                                    ))}
+                                    {sections.length === 0 && <span style={{ fontSize: '0.85rem', color: '#888' }}>No sections added yet.</span>}
+                                </div>
+                            </div>
 
                             <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '2px solid #fee2e2' }}>
                                 {!isResetConfirming ? (

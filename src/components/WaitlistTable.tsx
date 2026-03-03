@@ -71,7 +71,24 @@ const ElapsedWait = ({ createdAt, status }: { createdAt: string, status: string 
     return <span>{Math.floor(elapsed / 60)} min</span>;
 };
 
-export default function WaitlistTable({ entries, defaultSmsMessage }: { entries: WaitlistEntry[], defaultSmsMessage?: string }) {
+interface ServerItem { id: string; name: string; restaurant_id: string; }
+interface SectionItem { id: string; name: string; restaurant_id: string; }
+
+export default function WaitlistTable({
+    entries,
+    defaultSmsMessage,
+    servers = [],
+    sections = [],
+    fetchEntries,
+    fetchPastEntries
+}: {
+    entries: WaitlistEntry[],
+    defaultSmsMessage?: string,
+    servers?: ServerItem[],
+    sections?: SectionItem[],
+    fetchEntries?: () => void,
+    fetchPastEntries?: () => void
+}) {
     const [editingEntry, setEditingEntry] = useState<WaitlistEntry | null>(null);
     const [editName, setEditName] = useState('');
     const [editSize, setEditSize] = useState(1);
@@ -79,6 +96,10 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
     const [editNotes, setEditNotes] = useState('');
     const [chattingEntry, setChattingEntry] = useState<WaitlistEntry | null>(null);
     const [chatMessage, setChatMessage] = useState('');
+
+    const [seatingEntry, setSeatingEntry] = useState<WaitlistEntry | null>(null);
+    const [selectedServer, setSelectedServer] = useState('');
+    const [selectedSection, setSelectedSection] = useState('');
 
     const openEdit = (entry: WaitlistEntry) => {
         setEditingEntry(entry);
@@ -131,7 +152,7 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
         setChattingEntry(null);
     };
 
-    const handleUpdateStatus = async (entry: WaitlistEntry, newStatus: string) => {
+    const handleUpdateStatus = async (entry: WaitlistEntry, newStatus: string, serverId?: string, sectionId?: string) => {
         if (newStatus === 'Notified') {
             try {
                 const res = await fetch('/api/notify', {
@@ -151,11 +172,29 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
                 console.error(err);
             }
         }
-        const supabase = createClient();
-        await supabase.from('waitlist_entries').update({
+
+        const updateData: any = {
             status: newStatus,
             updated_at: new Date().toISOString()
-        }).eq('id', entry.id);
+        };
+        if (newStatus === 'Seated') {
+            if (serverId) updateData.server_id = serverId;
+            if (sectionId) updateData.section_id = sectionId;
+        }
+
+        const supabase = createClient();
+        await supabase.from('waitlist_entries').update(updateData).eq('id', entry.id);
+
+        if (fetchEntries) fetchEntries();
+        if (fetchPastEntries) fetchPastEntries();
+    };
+
+    const confirmSeat = () => {
+        if (!seatingEntry) return;
+        handleUpdateStatus(seatingEntry, 'Seated', selectedServer, selectedSection);
+        setSeatingEntry(null);
+        setSelectedServer('');
+        setSelectedSection('');
     };
 
     return (
@@ -211,7 +250,13 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
                                     <div className="actions-cell">
-                                        <button onClick={() => handleUpdateStatus(entry, 'Seated')} className="btn-action btn-seat" title="Seat Party">
+                                        <button onClick={() => {
+                                            if (servers.length > 0 || sections.length > 0) {
+                                                setSeatingEntry(entry);
+                                            } else {
+                                                handleUpdateStatus(entry, 'Seated');
+                                            }
+                                        }} className="btn-action btn-seat" title="Seat Party">
                                             <Check size={18} />
                                         </button>
                                         <button onClick={() => handleUpdateStatus(entry, 'No Show')} className="btn-action btn-cancel" title="Cancel/No Show">
@@ -294,6 +339,49 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
                             <div className="modal-actions">
                                 <button className="btn-cancel-modal" onClick={() => setChattingEntry(null)}>Cancel</button>
                                 <button className="btn-save-modal" onClick={sendChat}>Send SMS</button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {
+                seatingEntry && (
+                    <div className="modal-overlay" onClick={() => setSeatingEntry(null)}>
+                        <div className="modal-content" onClick={e => e.stopPropagation()}>
+                            <h2>Seat {seatingEntry.party_name}</h2>
+                            {servers.length > 0 && (
+                                <div className="form-group">
+                                    <label>Assign Server (Optional)</label>
+                                    <select
+                                        value={selectedServer}
+                                        onChange={e => setSelectedServer(e.target.value)}
+                                        style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', fontFamily: 'inherit' }}
+                                    >
+                                        <option value="">-- No server --</option>
+                                        {servers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                            {sections.length > 0 && (
+                                <div className="form-group">
+                                    <label>Assign Section (Optional)</label>
+                                    <select
+                                        value={selectedSection}
+                                        onChange={e => setSelectedSection(e.target.value)}
+                                        style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', fontFamily: 'inherit' }}
+                                    >
+                                        <option value="">-- No section --</option>
+                                        {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
+                            {(servers.length === 0 && sections.length === 0) && (
+                                <p style={{ color: '#64748b', fontSize: '0.95rem' }}>Are you sure you want to seat this party?</p>
+                            )}
+                            <div className="modal-actions">
+                                <button className="btn-cancel-modal" onClick={() => setSeatingEntry(null)}>Cancel</button>
+                                <button className="btn-save-modal" onClick={confirmSeat}>Confirm Seat</button>
                             </div>
                         </div>
                     </div>
