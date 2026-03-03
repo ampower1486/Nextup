@@ -310,7 +310,7 @@ export default function WaitlistTable({ entries, defaultSmsMessage }: { entries:
           width: 100%;
           border-collapse: collapse;
           text-align: left;
-          min-width: 600px;
+          min-width: 750px;
         }
         th {
           background-color: white;

@@ -1729,9 +1729,9 @@ export default function Home() {
             .top-header {
                 height: auto;
                 flex-direction: column;
-                gap: 1.5rem;
+                gap: 0.75rem;
                 align-items: center;
-                padding: 1.5rem 1rem;
+                padding: 1rem;
             }
             .header-column-left, .header-column-center, .header-column-right {
                 width: 100%;
@@ -1741,9 +1741,12 @@ export default function Home() {
             }
             .header-column-left h1 {
                 align-items: center;
+                font-size: 1.15rem !important;
+                white-space: normal;
+                word-wrap: break-word;
             }
             .time-display {
-                font-size: 2.25rem;
+                font-size: 2rem;
             }
             .header-actions {
                 width: 100%;
@@ -1759,6 +1762,8 @@ export default function Home() {
                 order: 1;
                 width: 100%;
                 justify-content: center;
+                font-size: 0.95rem;
+                padding: 0.5rem 1rem;
             }
             .app-footer {
                 flex-direction: column;
