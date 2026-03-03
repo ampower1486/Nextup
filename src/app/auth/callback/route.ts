@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { EmailOtpType } from '@supabase/supabase-js'
 
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url)
     const code = searchParams.get('code')
+    const token_hash = searchParams.get('token_hash')
+
     // if "next" is in param, use it as the redirect URL
     const next = searchParams.get('next') ?? '/'
-    const type = searchParams.get('type')
+    const type = searchParams.get('type') as EmailOtpType | null
     const error_description = searchParams.get('error_description')
     const error_name = searchParams.get('error')
 
@@ -28,6 +31,21 @@ export async function GET(request: Request) {
         } else {
             console.error('Exchange code error:', error?.message)
             const errorMsg = encodeURIComponent(error?.message || 'Exchange code error')
+            return NextResponse.redirect(`${finalOrigin}/login?message=${errorMsg}`)
+        }
+    }
+
+    if (token_hash && type) {
+        const supabase = await createClient()
+        const { error } = await supabase.auth.verifyOtp({
+            type,
+            token_hash,
+        })
+        if (!error) {
+            return NextResponse.redirect(`${finalOrigin}${next}`)
+        } else {
+            console.error('Verify OTP error:', error?.message)
+            const errorMsg = encodeURIComponent(error?.message || 'Verification link expired')
             return NextResponse.redirect(`${finalOrigin}/login?message=${errorMsg}`)
         }
     }
