@@ -249,8 +249,8 @@ export default function Signup() {
           font-size: 0.9rem;
         }
 
-        .forgot-password-link {
-          color: #00c3ff;
+        .forgot-password-link, .forgot-password-link:visited {
+          color: #00c3ff !important;
           text-decoration: none;
           transition: color 0.2s ease;
           font-weight: 500;

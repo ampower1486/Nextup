@@ -220,8 +220,8 @@ export default function ForgotPassword() {
           margin-top: 0.5rem;
         }
 
-        .forgot-password-link {
-          color: #00c3ff;
+        .forgot-password-link, .forgot-password-link:visited {
+          color: #00c3ff !important;
           font-size: 0.9rem;
           text-decoration: none;
           transition: color 0.2s ease;
