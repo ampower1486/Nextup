@@ -744,6 +744,8 @@ export default function Home() {
                                                 .filter(res => {
                                                     const resDate = new Date(res.date_time);
                                                     const now = new Date();
+                                                    const isToday = resDate.getDate() === now.getDate() && resDate.getMonth() === now.getMonth() && resDate.getFullYear() === now.getFullYear();
+                                                    if (isToday) return false;
                                                     const diffDays = (resDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
                                                     if (resFilter === 'week') return diffDays >= -1 && diffDays <= 7;
                                                     return diffDays >= -1 && diffDays <= 30;
@@ -756,6 +758,8 @@ export default function Home() {
                                                 .filter(res => {
                                                     const resDate = new Date(res.date_time);
                                                     const now = new Date();
+                                                    const isToday = resDate.getDate() === now.getDate() && resDate.getMonth() === now.getMonth() && resDate.getFullYear() === now.getFullYear();
+                                                    if (isToday) return false;
                                                     const diffDays = (resDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
                                                     if (resFilter === 'week') return diffDays >= -1 && diffDays <= 7;
                                                     return diffDays >= -1 && diffDays <= 30;
@@ -1291,8 +1295,16 @@ export default function Home() {
                                     <span className="logo-text">Tablereserve</span>
                                 </div>
                                 <div className="reservation-list">
-                                    {reservations.length === 0 && <p style={{ color: '#888', fontStyle: 'italic', fontSize: '0.9rem' }}>No incoming reservations.</p>}
-                                    {reservations.map(res => (
+                                    {reservations.filter(res => {
+                                        const d = new Date(res.date_time);
+                                        const now = new Date();
+                                        return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                                    }).length === 0 && <p style={{ color: '#888', fontStyle: 'italic', fontSize: '0.9rem' }}>No incoming reservations for today.</p>}
+                                    {reservations.filter(res => {
+                                        const d = new Date(res.date_time);
+                                        const now = new Date();
+                                        return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                                    }).map(res => (
                                         <div key={res.id} className="reservation-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div className="res-info" style={{ flex: 1, minWidth: 0, paddingRight: '0.5rem' }}>
                                                 <strong style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
