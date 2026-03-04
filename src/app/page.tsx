@@ -1867,10 +1867,12 @@ export default function Home() {
         }
         .modal-content {
             background-color: white;
-            padding: 2rem;
-            border-radius: 12px;
-            width: 400px;
+            padding: 2.5rem;
+            border-radius: 16px;
+            width: 650px;
             max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
         .modal-content h2 { margin-top: 0; margin-bottom: 1.5rem; }
