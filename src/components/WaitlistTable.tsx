@@ -71,7 +71,7 @@ const ElapsedWait = ({ createdAt, status }: { createdAt: string, status: string 
     return <span>{Math.floor(elapsed / 60)} min</span>;
 };
 
-interface ServerItem { id: string; name: string; restaurant_id: string; }
+interface ServerItem { id: string; name: string; restaurant_id: string; is_active?: boolean; }
 interface SectionItem { id: string; name: string; restaurant_id: string; }
 
 export default function WaitlistTable({
@@ -359,7 +359,7 @@ export default function WaitlistTable({
                                         style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', fontFamily: 'inherit' }}
                                     >
                                         <option value="">-- No server --</option>
-                                        {servers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        {servers.filter(s => s.is_active !== false).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
                                 </div>
                             )}

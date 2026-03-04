@@ -10,7 +10,7 @@ import { WaitlistEntry } from '@/lib/supabase';
 import { createClient } from '@/utils/supabase/client';
 import { createRestaurantAction, deleteRestaurantAction, syncMissingRestaurantsAction, deleteExternalRestaurantAction } from '@/app/actions/restaurant';
 import EditRestaurantForm from '@/components/EditRestaurantForm';
-import { UtensilsCrossed, ClipboardList, Calendar, Clock, BarChart2, Settings, LogOut, Search, Plus, ArrowLeftRight, ShieldAlert, Globe, Loader2, Users, LayoutGrid, Trash2 } from 'lucide-react';
+import { UtensilsCrossed, ClipboardList, Calendar, Clock, BarChart2, Settings, LogOut, Search, Plus, ArrowLeftRight, ShieldAlert, Globe, Loader2, Users, LayoutGrid, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 
 interface Reservation {
     id: string;
@@ -28,6 +28,7 @@ interface ServerItem {
     id: string;
     name: string;
     restaurant_id: string;
+    is_active?: boolean;
 }
 
 interface SectionItem {
@@ -342,6 +343,16 @@ export default function Home() {
         if (!confirm('Area you sure you want to delete this server?')) return;
         await supabase.from('waitlist_servers').delete().eq('id', id);
         fetchServersAndSections();
+    };
+
+    const handleToggleServerActive = async (id: string, currentStatus: boolean | undefined) => {
+        const newStatus = currentStatus === false ? true : false;
+        setServers(prev => prev.map(s => s.id === id ? { ...s, is_active: newStatus } : s));
+        const { error } = await supabase.from('waitlist_servers').update({ is_active: newStatus }).eq('id', id);
+        if (error) {
+            alert('Failed to update. Please ensure the "is_active" boolean column exists in your Waitlist Servers table in Supabase. Error message: ' + error.message);
+            fetchServersAndSections();
+        }
     };
 
     const handleAddSection = async () => {
@@ -1420,14 +1431,22 @@ export default function Home() {
                                             </button>
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto', paddingRight: '0.25rem' }}>
-                                            {servers.map(s => (
-                                                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0.8rem', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', alignItems: 'center', transition: 'all 0.2s', cursor: 'default' }} onMouseOver={e => e.currentTarget.style.borderColor = '#cbd5e1'} onMouseOut={e => e.currentTarget.style.borderColor = '#e2e8f0'}>
-                                                    <span style={{ fontWeight: '600', color: '#334155', fontSize: '0.9rem' }}>{s.name}</span>
-                                                    <button onClick={() => handleDeleteServer(s.id)} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', borderRadius: '6px', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e => { e.currentTarget.style.background = '#f87171'; e.currentTarget.style.color = 'white'; }} onMouseOut={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#ef4444'; }}>
-                                                        <Trash2 size={12} strokeWidth={2.5} />
-                                                    </button>
-                                                </div>
-                                            ))}
+                                            {servers.map(s => {
+                                                const isActive = s.is_active !== false;
+                                                return (
+                                                    <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0.8rem', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', alignItems: 'center', transition: 'all 0.2s', cursor: 'default', opacity: isActive ? 1 : 0.6 }} onMouseOver={e => e.currentTarget.style.borderColor = '#cbd5e1'} onMouseOut={e => e.currentTarget.style.borderColor = '#e2e8f0'}>
+                                                        <span style={{ fontWeight: '600', color: isActive ? '#334155' : '#94a3b8', fontSize: '0.9rem', textDecoration: isActive ? 'none' : 'line-through' }}>{s.name}</span>
+                                                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                                            <button title={isActive ? "Mark Inactive" : "Mark Active"} onClick={() => handleToggleServerActive(s.id, s.is_active)} style={{ background: isActive ? '#dcfce7' : '#f1f5f9', border: 'none', color: isActive ? '#10b981' : '#64748b', borderRadius: '6px', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e => { e.currentTarget.style.filter = 'brightness(0.95)'; }} onMouseOut={e => { e.currentTarget.style.filter = 'none'; }}>
+                                                                {isActive ? <ToggleRight size={16} strokeWidth={2.5} /> : <ToggleLeft size={16} strokeWidth={2.5} />}
+                                                            </button>
+                                                            <button onClick={() => handleDeleteServer(s.id)} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', borderRadius: '6px', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e => { e.currentTarget.style.background = '#f87171'; e.currentTarget.style.color = 'white'; }} onMouseOut={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#ef4444'; }}>
+                                                                <Trash2 size={12} strokeWidth={2.5} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
                                             {servers.length === 0 && <span style={{ fontSize: '0.85rem', color: '#94a3b8', textAlign: 'center', padding: '1rem', fontStyle: 'italic', display: 'block' }}>No servers added.</span>}
                                         </div>
                                     </div>
