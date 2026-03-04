@@ -393,12 +393,41 @@ export default function WaitlistTable({
           background-color: white;
           overflow: hidden;
           padding-bottom: 6rem; /* space for FAB */
+          /* Mobile responsiveness */
+          width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
         }
         .waitlist-table {
           width: 100%;
           border-collapse: collapse;
           text-align: left;
           min-width: 750px;
+        }
+        
+        @media (max-width: 768px) {
+          .waitlist-table {
+            min-width: 100%; /* Let it shrink on very small screens if possible, or keep scrolling */
+          }
+          th, td {
+            padding: 1rem 0.75rem; /* Reduce padding on mobile */
+          }
+          .party-name {
+            font-size: 0.95rem;
+          }
+          .size-text {
+            font-size: 0.9rem;
+          }
+          .quoted-time {
+            font-size: 0.85rem;
+          }
+          .btn-action {
+             width: 32px;
+             height: 32px;
+          }
+          .actions-cell {
+             gap: 0.4rem;
+          }
         }
         th {
           background-color: white;
