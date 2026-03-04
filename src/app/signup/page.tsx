@@ -25,7 +25,7 @@ export default function Signup() {
 
     const supabase = createClient();
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -54,8 +54,13 @@ export default function Signup() {
       }
       setLoading(false);
     } else {
-      // Redirect to confirmation page
-      router.push('/confirm-email');
+      // If email confirmation is disabled, Supabase returns a session immediately
+      if (signUpData?.session) {
+        router.push('/');
+      } else {
+        // Redirect to confirmation page if email confirm is still enabled
+        router.push('/confirm-email');
+      }
     }
   };
 
