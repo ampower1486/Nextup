@@ -371,12 +371,16 @@ export default function Home() {
             return;
         }
 
-        console.log("Deleting all visible entries...");
-        // Using .neq with a dummy UUID to target all rows (Supabase requires at least one filter for delete)
+        if (!restaurantId || restaurantId === 'null') {
+            alert("Please select a specific restaurant to reset the waitlist.");
+            return;
+        }
+
+        console.log("Deleting visible entries for restaurant:", restaurantId);
         const { error } = await supabase
             .from('waitlist_entries')
             .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000')
+            .eq('restaurant_id', restaurantId)
             .in('status', ['Waiting', 'Notified', 'Seated', 'No Show']);
 
         if (error) {
@@ -1018,73 +1022,75 @@ export default function Home() {
                                     <h2 style={{ padding: '0 2rem 0.5rem', margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>Staff Management & Restaurant Assignment</h2>
                                     <p style={{ padding: '0 2rem 1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Assign staff and admins to restaurants.</p>
 
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                        <thead>
-                                            <tr>
-                                                <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>STAFF / ADMIN {sortColumn === 'name' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                                <th onClick={() => handleSort('email')} style={{ cursor: 'pointer', padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>EMAIL {sortColumn === 'email' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                                <th onClick={() => handleSort('role')} style={{ cursor: 'pointer', padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>ROLE {sortColumn === 'role' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                                <th onClick={() => handleSort('assigned_restaurant')} style={{ cursor: 'pointer', padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>ASSIGNED RESTAURANT {sortColumn === 'assigned_restaurant' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {sortedProfiles.length === 0 ? (
-                                                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No profiles found.</td></tr>
-                                            ) : null}
-                                            {sortedProfiles.map(profile => (
-                                                <tr key={profile.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
-                                                    <td style={{ padding: '1.25rem 2rem' }}><strong style={{ color: 'var(--text-primary)' }}>{profile.name}</strong></td>
-                                                    <td style={{ padding: '1.25rem 2rem' }}><span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{profile.email}</span></td>
-                                                    <td style={{ padding: '1.25rem 2rem' }}>
-                                                        <select
-                                                            value={profile.role || 'restaurant'}
-                                                            onChange={async (e) => {
-                                                                const newRole = e.target.value;
-                                                                const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', profile.id);
-                                                                if (!error) window.location.reload();
-                                                            }}
-                                                            style={{
-                                                                padding: '0.4rem 0.8rem',
-                                                                borderRadius: '8px',
-                                                                border: '1px solid var(--table-border)',
-                                                                background: '#fff',
-                                                                fontSize: '0.85rem',
-                                                                fontWeight: '600',
-                                                                cursor: 'pointer'
-                                                            }}
-                                                        >
-                                                            <option value="restaurant">Restaurant</option>
-                                                            <option value="staff">Staff</option>
-                                                            <option value="admin">Admin</option>
-                                                        </select>
-                                                    </td>
-                                                    <td style={{ padding: '1.25rem 2rem' }}>
-                                                        <select
-                                                            value={profile.restaurant_id || ''}
-                                                            onChange={async (e) => {
-                                                                const resId = e.target.value || null;
-                                                                await supabase.from('profiles').update({ restaurant_id: resId }).eq('id', profile.id);
-                                                                window.location.reload();
-                                                            }}
-                                                            style={{
-                                                                padding: '0.5rem 1rem',
-                                                                borderRadius: '8px',
-                                                                border: '1px solid var(--table-border)',
-                                                                background: '#fff',
-                                                                fontWeight: '600',
-                                                                cursor: 'pointer'
-                                                            }}
-                                                        >
-                                                            <option value="">-- Unassigned --</option>
-                                                            {allRestaurants.map(r => (
-                                                                <option key={r.id} value={r.id}>{r.name}</option>
-                                                            ))}
-                                                        </select>
-                                                    </td>
+                                    <div className="table-responsive-wrapper">
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
+                                            <thead>
+                                                <tr>
+                                                    <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>STAFF / ADMIN {sortColumn === 'name' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                                                    <th onClick={() => handleSort('email')} style={{ cursor: 'pointer', padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>EMAIL {sortColumn === 'email' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                                                    <th onClick={() => handleSort('role')} style={{ cursor: 'pointer', padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>ROLE {sortColumn === 'role' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                                                    <th onClick={() => handleSort('assigned_restaurant')} style={{ cursor: 'pointer', padding: '1rem 2rem', borderBottom: '2px solid var(--table-border)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>ASSIGNED RESTAURANT {sortColumn === 'assigned_restaurant' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                {sortedProfiles.length === 0 ? (
+                                                    <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>No profiles found.</td></tr>
+                                                ) : null}
+                                                {sortedProfiles.map(profile => (
+                                                    <tr key={profile.id} style={{ borderBottom: '1px solid var(--table-border)' }}>
+                                                        <td style={{ padding: '1.25rem 2rem' }}><strong style={{ color: 'var(--text-primary)' }}>{profile.name}</strong></td>
+                                                        <td style={{ padding: '1.25rem 2rem' }}><span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{profile.email}</span></td>
+                                                        <td style={{ padding: '1.25rem 2rem' }}>
+                                                            <select
+                                                                value={profile.role || 'restaurant'}
+                                                                onChange={async (e) => {
+                                                                    const newRole = e.target.value;
+                                                                    const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', profile.id);
+                                                                    if (!error) window.location.reload();
+                                                                }}
+                                                                style={{
+                                                                    padding: '0.4rem 0.8rem',
+                                                                    borderRadius: '8px',
+                                                                    border: '1px solid var(--table-border)',
+                                                                    background: '#fff',
+                                                                    fontSize: '0.85rem',
+                                                                    fontWeight: '600',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                <option value="restaurant">Restaurant</option>
+                                                                <option value="staff">Staff</option>
+                                                                <option value="admin">Admin</option>
+                                                            </select>
+                                                        </td>
+                                                        <td style={{ padding: '1.25rem 2rem' }}>
+                                                            <select
+                                                                value={profile.restaurant_id || ''}
+                                                                onChange={async (e) => {
+                                                                    const resId = e.target.value || null;
+                                                                    await supabase.from('profiles').update({ restaurant_id: resId }).eq('id', profile.id);
+                                                                    window.location.reload();
+                                                                }}
+                                                                style={{
+                                                                    padding: '0.5rem 1rem',
+                                                                    borderRadius: '8px',
+                                                                    border: '1px solid var(--table-border)',
+                                                                    background: '#fff',
+                                                                    fontWeight: '600',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                <option value="">-- Unassigned --</option>
+                                                                {allRestaurants.map(r => (
+                                                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
 
                                 <div style={{ borderTop: '4px solid var(--table-border)', paddingTop: '2rem', marginBottom: '4rem' }}>
@@ -1705,12 +1711,14 @@ export default function Home() {
             display: flex;
             flex: 1;
             overflow: hidden;
+            min-height: 0;
         }
         .left-panel {
             flex: 1;
             overflow-y: auto;
             position: relative;
             background-color: white;
+            min-height: 0;
         }
         .right-panel {
             width: 320px;
