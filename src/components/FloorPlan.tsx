@@ -383,8 +383,43 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                                         />
                                     </div>
                                     <span style={{ fontSize: '0.8rem', color: '#64748b', paddingLeft: '0.5rem', borderLeft: '1px solid #cbd5e1', marginLeft: '0.25rem' }}>
-                                        Click and drag to draw a wall.
+                                        Click and drag to draw a wall, or
                                     </span>
+                                    <button
+                                        onClick={async () => {
+                                            const newWall = {
+                                                start_x: 100,
+                                                start_y: 100,
+                                                end_x: 300,
+                                                end_y: 100,
+                                                thickness: wallThickness,
+                                                color: wallColor,
+                                                restaurant_id: restaurantId!,
+                                                floor_plan_name: activePlan
+                                            };
+                                            const { error } = await supabase.from('restaurant_walls').insert([newWall]);
+                                            if (error) {
+                                                alert("Error adding wall. Ensure your database table is created: " + error.message);
+                                            } else {
+                                                fetchWalls();
+                                            }
+                                        }}
+                                        style={{
+                                            background: '#3b82f6',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            padding: '0.4rem 0.8rem',
+                                            cursor: 'pointer',
+                                            fontWeight: '600',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            fontSize: '0.9rem'
+                                        }}
+                                    >
+                                        <Plus size={14} /> Add Wall
+                                    </button>
                                 </div>
                             )}
                         </div>
