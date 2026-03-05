@@ -110,8 +110,8 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
 
         const { error } = await supabase.from('restaurant_tables').insert([newTable]);
         if (error) {
-            if (error.code === '42P01') {
-                alert('Table "restaurant_tables" does not exist yet. Please run the provided SQL in your Supabase dashboard.');
+            if (error.code === '42P01' || error.message?.includes('schema cache')) {
+                alert('Table "restaurant_tables" does not exist yet. Please run the provided SQL in your Supabase SQL Editor to create it.');
             } else if (error.code === '42703' || error.message?.includes('floor_plan_name')) {
                 alert(`Support for multiple floor plans requires a database update!\n\nPlease run this SQL in your Supabase dashboard:\n\nALTER TABLE restaurant_tables ADD COLUMN floor_plan_name text DEFAULT 'Main';`);
             } else {
