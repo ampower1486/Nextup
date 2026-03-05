@@ -195,11 +195,14 @@ export default function Home() {
     };
 
     useEffect(() => {
-        const savedMessage = localStorage.getItem('nextup_sms_message');
+        if (!restaurantId) return;
+        const savedMessage = localStorage.getItem(`nextup_sms_message_${restaurantId}`);
         if (savedMessage) {
             setDefaultSmsMessage(savedMessage);
+        } else {
+            setDefaultSmsMessage('Your table is ready! Please head to the host stand.');
         }
-    }, []);
+    }, [restaurantId]);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -207,7 +210,9 @@ export default function Home() {
     };
 
     const saveSettings = () => {
-        localStorage.setItem('nextup_sms_message', defaultSmsMessage);
+        if (restaurantId) {
+            localStorage.setItem(`nextup_sms_message_${restaurantId}`, defaultSmsMessage);
+        }
         setIsSettingsOpen(false);
     };
 
@@ -324,8 +329,8 @@ export default function Home() {
         if (!restaurantId || restaurantId === 'null') return;
 
         const [servRes, sectRes] = await Promise.all([
-            supabase.from('waitlist_servers').select('*').eq('restaurant_id', restaurantId).order('created_at', { ascending: true }),
-            supabase.from('waitlist_sections').select('*').eq('restaurant_id', restaurantId).order('created_at', { ascending: true })
+            supabase.from('waitlist_servers').select('*').eq('restaurant_id', restaurantId).order('name', { ascending: true }),
+            supabase.from('waitlist_sections').select('*').eq('restaurant_id', restaurantId).order('name', { ascending: true })
         ]);
 
         if (servRes.data) setServers(servRes.data);
@@ -1535,8 +1540,14 @@ export default function Home() {
                         </div>
                         <div className="modal-actions">
                             <button className="btn-cancel" onClick={() => {
-                                const saved = localStorage.getItem('nextup_sms_message');
-                                if (saved) setDefaultSmsMessage(saved);
+                                if (restaurantId) {
+                                    const saved = localStorage.getItem(`nextup_sms_message_${restaurantId}`);
+                                    if (saved) {
+                                        setDefaultSmsMessage(saved);
+                                    } else {
+                                        setDefaultSmsMessage('Your table is ready! Please head to the host stand.');
+                                    }
+                                }
                                 setIsSettingsOpen(false);
                             }}>Cancel</button>
                             <button className="btn-close" onClick={saveSettings}>Save & Close</button>
