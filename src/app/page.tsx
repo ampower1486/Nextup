@@ -760,8 +760,6 @@ export default function Home() {
                                                 .filter(res => {
                                                     const resDate = new Date(res.date_time);
                                                     const now = new Date();
-                                                    const isToday = resDate.getDate() === now.getDate() && resDate.getMonth() === now.getMonth() && resDate.getFullYear() === now.getFullYear();
-                                                    if (isToday) return false;
                                                     const diffDays = (resDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
                                                     if (resFilter === 'week') return diffDays >= -1 && diffDays <= 7;
                                                     return diffDays >= -1 && diffDays <= 30;
@@ -774,8 +772,6 @@ export default function Home() {
                                                 .filter(res => {
                                                     const resDate = new Date(res.date_time);
                                                     const now = new Date();
-                                                    const isToday = resDate.getDate() === now.getDate() && resDate.getMonth() === now.getMonth() && resDate.getFullYear() === now.getFullYear();
-                                                    if (isToday) return false;
                                                     const diffDays = (resDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
                                                     if (resFilter === 'week') return diffDays >= -1 && diffDays <= 7;
                                                     return diffDays >= -1 && diffDays <= 30;
