@@ -20,6 +20,7 @@ interface RestaurantTable {
     width: number;
     height: number;
     restaurant_id: string;
+    floor_plan_name?: string;
 }
 
 interface FloorPlanProps {
@@ -30,6 +31,8 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
     const [tables, setTables] = useState<RestaurantTable[]>([]);
     const [isEditMode, setIsEditMode] = useState(false);
     const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
+    const [activePlan, setActivePlan] = useState<string>('Main');
+    const [floorPlans, setFloorPlans] = useState<string[]>(['Main']);
     const canvasRef = useRef<HTMLDivElement>(null);
 
     // Form states
@@ -73,7 +76,20 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
             // If the table doesn't exist yet, we silently ignore.
             return;
         }
-        if (data) setTables(data);
+        if (data) {
+            setTables(data);
+            const plans = new Set<string>();
+            data.forEach((t: any) => {
+                if (t.floor_plan_name) plans.add(t.floor_plan_name);
+            });
+            if (plans.size === 0) plans.add('Main');
+
+            const plansArray = Array.from(plans);
+            setFloorPlans(prev => {
+                const combined = new Set([...prev, ...plansArray]);
+                return Array.from(combined);
+            });
+        }
     };
 
     const handleAddTable = async () => {
@@ -89,14 +105,18 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
             width: newTableShape === 'circle' ? 80 : 100,
             height: 80,
             restaurant_id: restaurantId,
+            floor_plan_name: activePlan
         };
 
         const { error } = await supabase.from('restaurant_tables').insert([newTable]);
         if (error) {
             if (error.code === '42P01') {
                 alert('Table "restaurant_tables" does not exist yet. Please run the provided SQL in your Supabase dashboard.');
+            } else if (error.code === '42703' || error.message?.includes('floor_plan_name')) {
+                alert('Support for multiple floor plans requires a database update!\\n\\nPlease run this SQL in your Supabase dashboard:\\n\\nALTER TABLE restaurant_tables ADD COLUMN floor_plan_name text DEFAULT \\'Main\\';');
             } else {
                 console.error(error);
+                alert("Error adding table: " + error.message);
             }
         } else {
             setNewTableNum('');
@@ -143,6 +163,8 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
         );
     }
 
+    const currentPlanTables = tables.filter(t => (t.floor_plan_name || 'Main') === activePlan);
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)' }}>
             {/* Toolbar */}
@@ -152,20 +174,59 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '1rem',
                 background: 'white'
             }}>
-                <div>
-                    <h2 style={{ margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>
-                        Floor Plan
-                    </h2>
-                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        {isEditMode ? 'Design your layout by dragging tables.' : 'Live view of your dining room status.'}
-                    </p>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                        <h2 style={{ margin: 0, fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: 'var(--text-primary)' }}>
+                            Floor Plan
+                        </h2>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                            {isEditMode ? 'Design your layout by dragging tables.' : 'Live view of your dining room status.'}
+                        </p>
+                    </div>
+
+                    {/* Floor Plan Selector */}
+                    <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '0.5rem' }}>
+                        <select
+                            value={activePlan}
+                            onChange={e => {
+                                if (e.target.value === 'NEW_PLAN') {
+                                    const name = prompt('Enter a name for the new floor plan (e.g. Patio, Second Floor):');
+                                    if (name && name.trim()) {
+                                        setFloorPlans(prev => [...prev, name.trim()]);
+                                        setActivePlan(name.trim());
+                                    } else {
+                                        // Reset to previously active plan if cancelled
+                                        setActivePlan(activePlan);
+                                    }
+                                } else {
+                                    setActivePlan(e.target.value);
+                                    setSelectedTable(null);
+                                }
+                            }}
+                            style={{
+                                padding: '0.5rem 0.8rem',
+                                borderRadius: '8px',
+                                border: '1px solid #cbd5e1',
+                                fontWeight: 700,
+                                color: 'var(--brand-primary)',
+                                background: '#f8fafc',
+                                cursor: 'pointer',
+                                outline: 'none'
+                            }}
+                        >
+                            {floorPlans.map(p => <option key={p} value={p}>{p}</option>)}
+                            <option value="NEW_PLAN">+ Create New Plan</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     {isEditMode && (
-                        <div style={{ display: 'flex', gap: '0.5rem', background: '#f8fafc', padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', background: '#f8fafc', padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', flexWrap: 'wrap', alignItems: 'center' }}>
                             <input
                                 type="text"
                                 placeholder="Table #"
@@ -196,12 +257,15 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '4px',
-                                    padding: '0 1rem',
+                                    padding: '0.5rem 1rem',
                                     cursor: 'pointer',
-                                    fontWeight: '600'
+                                    fontWeight: '600',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
                                 }}
                             >
-                                Add
+                                <Plus size={16} /> Add Table
                             </button>
                         </div>
                     )}
@@ -251,7 +315,7 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                     }
                 }}
             >
-                {tables.map(table => (
+                {currentPlanTables.map(table => (
                     <DraggableTable
                         key={table.id}
                         table={table}
