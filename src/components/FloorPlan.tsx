@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Plus, Trash2, CheckCircle2, AlertCircle, Clock, Ban, Expand, Settings2 } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, AlertCircle, Clock, Ban, Settings2, Pencil, MousePointer2 } from 'lucide-react';
 
 const supabase = createClient();
 
@@ -23,17 +23,36 @@ interface RestaurantTable {
     floor_plan_name?: string;
 }
 
+interface RestaurantWall {
+    id: string;
+    start_x: number;
+    start_y: number;
+    end_x: number;
+    end_y: number;
+    thickness: number;
+    color: string;
+    restaurant_id: string;
+    floor_plan_name?: string;
+}
+
 interface FloorPlanProps {
     restaurantId: string | null;
 }
 
 export default function FloorPlan({ restaurantId }: FloorPlanProps) {
     const [tables, setTables] = useState<RestaurantTable[]>([]);
+    const [walls, setWalls] = useState<RestaurantWall[]>([]);
     const [isEditMode, setIsEditMode] = useState(false);
+    const [editTool, setEditTool] = useState<'tables' | 'walls'>('tables');
     const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
     const [activePlan, setActivePlan] = useState<string>('Main');
     const [floorPlans, setFloorPlans] = useState<string[]>(['Main']);
     const canvasRef = useRef<HTMLDivElement>(null);
+
+    // Drawing Wall states
+    const [isDrawing, setIsDrawing] = useState(false);
+    const [drawingStart, setDrawingStart] = useState<{ x: number, y: number } | null>(null);
+    const [drawingEnd, setDrawingEnd] = useState<{ x: number, y: number } | null>(null);
 
     // Form states
     const [newTableNum, setNewTableNum] = useState('');
@@ -47,6 +66,7 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
         }
 
         fetchTables();
+        fetchWalls();
 
         const channel = supabase
             .channel('floor-plan-changes')
@@ -57,12 +77,35 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                     fetchTables();
                 }
             )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'restaurant_walls', filter: `restaurant_id=eq.${restaurantId}` },
+                () => {
+                    fetchWalls();
+                }
+            )
             .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
         };
     }, [restaurantId]);
+
+    const fetchWalls = async () => {
+        if (!restaurantId) return;
+        const { data, error } = await supabase
+            .from('restaurant_walls')
+            .select('*')
+            .eq('restaurant_id', restaurantId);
+
+        if (error) {
+            console.error('Error fetching walls:', error);
+            return;
+        }
+        if (data) {
+            setWalls(data);
+        }
+    };
 
     const fetchTables = async () => {
         if (!restaurantId) return;
@@ -131,6 +174,12 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
         fetchTables();
     };
 
+    const handleDeleteWall = async (id: string) => {
+        if (!confirm('Delete this wall?')) return;
+        await supabase.from('restaurant_walls').delete().eq('id', id);
+        fetchWalls();
+    };
+
     const handleUpdateStatus = async (id: string, status: TableStatus) => {
         // Optimistic UI update
         setTables(prev => prev.map(t => t.id === id ? { ...t, status } : t));
@@ -164,6 +213,7 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
     }
 
     const currentPlanTables = tables.filter(t => (t.floor_plan_name || 'Main') === activePlan);
+    const currentPlanWalls = walls.filter(w => (w.floor_plan_name || 'Main') === activePlan);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)' }}>
@@ -227,46 +277,90 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     {isEditMode && (
                         <div style={{ display: 'flex', gap: '0.5rem', background: '#f8fafc', padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', flexWrap: 'wrap', alignItems: 'center' }}>
-                            <input
-                                type="text"
-                                placeholder="Table #"
-                                value={newTableNum}
-                                onChange={e => setNewTableNum(e.target.value)}
-                                style={{ width: '80px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                            />
-                            <input
-                                type="number"
-                                placeholder="Seats"
-                                value={newTableSeats}
-                                onChange={e => setNewTableSeats(Number(e.target.value))}
-                                style={{ width: '70px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                                min={1}
-                            />
-                            <select
-                                value={newTableShape}
-                                onChange={e => setNewTableShape(e.target.value as TableShape)}
-                                style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                            >
-                                <option value="rectangle">Rectangle</option>
-                                <option value="circle">Circle</option>
-                            </select>
-                            <button
-                                onClick={handleAddTable}
-                                style={{
-                                    background: '#3b82f6',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    padding: '0.5rem 1rem',
-                                    cursor: 'pointer',
-                                    fontWeight: '600',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                }}
-                            >
-                                <Plus size={16} /> Add Table
-                            </button>
+                            <div style={{ display: 'flex', border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', marginRight: '0.5rem' }}>
+                                <button
+                                    onClick={() => setEditTool('tables')}
+                                    style={{
+                                        padding: '0.5rem 0.75rem',
+                                        background: editTool === 'tables' ? '#e2e8f0' : 'white',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem',
+                                        fontWeight: editTool === 'tables' ? 'bold' : 'normal'
+                                    }}
+                                >
+                                    <MousePointer2 size={16} /> Tables
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setEditTool('walls');
+                                        setSelectedTable(null);
+                                    }}
+                                    style={{
+                                        padding: '0.5rem 0.75rem',
+                                        background: editTool === 'walls' ? '#e2e8f0' : 'white',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem',
+                                        fontWeight: editTool === 'walls' ? 'bold' : 'normal'
+                                    }}
+                                >
+                                    <Pencil size={16} /> Walls
+                                </button>
+                            </div>
+
+                            {editTool === 'tables' ? (
+                                <>
+                                    <input
+                                        type="text"
+                                        placeholder="Table #"
+                                        value={newTableNum}
+                                        onChange={e => setNewTableNum(e.target.value)}
+                                        style={{ width: '80px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                    />
+                                    <input
+                                        type="number"
+                                        placeholder="Seats"
+                                        value={newTableSeats}
+                                        onChange={e => setNewTableSeats(Number(e.target.value))}
+                                        style={{ width: '70px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                        min={1}
+                                    />
+                                    <select
+                                        value={newTableShape}
+                                        onChange={e => setNewTableShape(e.target.value as TableShape)}
+                                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                    >
+                                        <option value="rectangle">Rectangle</option>
+                                        <option value="circle">Circle</option>
+                                    </select>
+                                    <button
+                                        onClick={handleAddTable}
+                                        style={{
+                                            background: '#3b82f6',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            padding: '0.5rem 1rem',
+                                            cursor: 'pointer',
+                                            fontWeight: '600',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                        }}
+                                    >
+                                        <Plus size={16} /> Add Table
+                                    </button>
+                                </>
+                            ) : (
+                                <span style={{ fontSize: '0.9rem', color: '#64748b', paddingRight: '0.5rem' }}>
+                                    Click and drag to draw a wall.
+                                </span>
+                            )}
                         </div>
                     )}
 
@@ -306,20 +400,128 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                     background: '#f1f5f9',
                     backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
                     backgroundSize: '20px 20px',
-                    overflow: 'auto'
+                    overflow: 'auto',
+                    cursor: isEditMode && editTool === 'walls' ? 'crosshair' : 'default',
+                    touchAction: isEditMode && editTool === 'walls' ? 'none' : 'auto'
+                }}
+                onPointerDown={(e) => {
+                    if (isEditMode && editTool === 'walls') {
+                        e.preventDefault();
+                        const rect = canvasRef.current?.getBoundingClientRect();
+                        if (!rect) return;
+                        const x = e.clientX - rect.left + (canvasRef.current?.scrollLeft || 0);
+                        const y = e.clientY - rect.top + (canvasRef.current?.scrollTop || 0);
+                        setIsDrawing(true);
+                        setDrawingStart({ x, y });
+                        setDrawingEnd({ x, y });
+                        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+                    }
+                }}
+                onPointerMove={(e) => {
+                    if (isDrawing && drawingStart) {
+                        e.preventDefault();
+                        const rect = canvasRef.current?.getBoundingClientRect();
+                        if (!rect) return;
+                        const x = e.clientX - rect.left + (canvasRef.current?.scrollLeft || 0);
+                        const y = e.clientY - rect.top + (canvasRef.current?.scrollTop || 0);
+                        setDrawingEnd({ x, y });
+                    }
+                }}
+                onPointerUp={async (e) => {
+                    if (isDrawing && drawingStart && drawingEnd) {
+                        setIsDrawing(false);
+                        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+
+                        const dx = drawingEnd.x - drawingStart.x;
+                        const dy = drawingEnd.y - drawingStart.y;
+                        if (Math.sqrt(dx * dx + dy * dy) > 10) {
+                            const newWall = {
+                                start_x: Math.round(drawingStart.x),
+                                start_y: Math.round(drawingStart.y),
+                                end_x: Math.round(drawingEnd.x),
+                                end_y: Math.round(drawingEnd.y),
+                                thickness: 8,
+                                color: '#334155',
+                                restaurant_id: restaurantId!,
+                                floor_plan_name: activePlan
+                            };
+                            await supabase.from('restaurant_walls').insert([newWall]);
+                            fetchWalls();
+                        }
+                        setDrawingStart(null);
+                        setDrawingEnd(null);
+                    }
                 }}
                 onClick={(e) => {
                     // Click outside tables deselects
-                    if (e.target === canvasRef.current) {
+                    if (e.target === canvasRef.current && (!isEditMode || editTool === 'tables')) {
                         setSelectedTable(null);
                     }
                 }}
             >
+                {/* SVG for Walls */}
+                <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible', zIndex: 0 }}>
+                    {currentPlanWalls.map(wall => (
+                        <line
+                            key={wall.id}
+                            x1={wall.start_x}
+                            y1={wall.start_y}
+                            x2={wall.end_x}
+                            y2={wall.end_y}
+                            stroke={wall.color}
+                            strokeWidth={wall.thickness}
+                            strokeLinecap="round"
+                        />
+                    ))}
+                    {isDrawing && drawingStart && drawingEnd && (
+                        <line
+                            x1={drawingStart.x}
+                            y1={drawingStart.y}
+                            x2={drawingEnd.x}
+                            y2={drawingEnd.y}
+                            stroke="#334155"
+                            strokeWidth={8}
+                            strokeLinecap="round"
+                            opacity={0.5}
+                        />
+                    )}
+                </svg>
+
+                {/* Wall Edit Delete Controls */}
+                {isEditMode && editTool === 'walls' && currentPlanWalls.map(wall => (
+                    <button
+                        key={`del-${wall.id}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteWall(wall.id);
+                        }}
+                        style={{
+                            position: 'absolute',
+                            left: (wall.start_x + wall.end_x) / 2 - 12,
+                            top: (wall.start_y + wall.end_y) / 2 - 12,
+                            background: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '24px',
+                            height: '24px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            zIndex: 10
+                        }}
+                    >
+                        <Trash2 size={12} />
+                    </button>
+                ))}
+
                 {currentPlanTables.map(table => (
                     <DraggableTable
                         key={table.id}
                         table={table}
-                        isEditMode={isEditMode}
+                        isEditMode={isEditMode && editTool === 'tables'}
                         onDragEnd={handleDragEnd}
                         onClick={() => !isEditMode && setSelectedTable(table)}
                         onDelete={() => handleDeleteTable(table.id)}
@@ -470,7 +672,8 @@ function DraggableTable({ table, isEditMode, onDragEnd, onClick, onDelete, color
                 boxShadow: isDragging ? '0 10px 20px rgba(0,0,0,0.15)' : '0 4px 6px rgba(0,0,0,0.05)',
                 transition: isDragging ? 'none' : 'box-shadow 0.2s, background 0.3s, border-color 0.3s',
                 touchAction: 'none',
-                userSelect: 'none'
+                userSelect: 'none',
+                zIndex: 5
             }}
         >
             <span style={{ fontWeight: '800', fontSize: '1.2rem' }}>{table.table_number}</span>
