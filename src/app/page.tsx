@@ -6,6 +6,7 @@ import Link from 'next/link';
 import AddPartyForm from '@/components/AddPartyForm';
 import WaitlistTable from '@/components/WaitlistTable';
 import CreateRestaurantForm from '@/components/CreateRestaurantForm';
+import FloorPlan from '@/components/FloorPlan';
 import { WaitlistEntry } from '@/lib/supabase';
 import { createClient } from '@/utils/supabase/client';
 import { createRestaurantAction, deleteRestaurantAction, syncMissingRestaurantsAction, deleteExternalRestaurantAction } from '@/app/actions/restaurant';
@@ -41,7 +42,7 @@ const supabase = createClient();
 
 export default function Home() {
     const router = useRouter();
-    const [currentTab, setCurrentTab] = useState<'Waitlist' | 'Reservations' | 'Recent' | 'Analytics' | 'Admin'>('Waitlist');
+    const [currentTab, setCurrentTab] = useState<'Waitlist' | 'Reservations' | 'Floor Plan' | 'Recent' | 'Analytics' | 'Admin'>('Waitlist');
     const [entries, setEntries] = useState<WaitlistEntry[]>([]);
     const [pastEntries, setPastEntries] = useState<WaitlistEntry[]>([]);
     const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -635,8 +636,12 @@ export default function Home() {
                         <div className="icon-wrapper banana-glow banana-purple"><Calendar size={22} strokeWidth={2} /></div>
                         <span>Reservations</span>
                     </a>
+                    <a href="#" className={`nav-item ${currentTab === 'Floor Plan' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setCurrentTab('Floor Plan'); }}>
+                        <div className="icon-wrapper banana-glow banana-cyan"><LayoutGrid size={22} strokeWidth={2} /></div>
+                        <span>Floor Plan</span>
+                    </a>
                     <a href="#" className={`nav-item ${currentTab === 'Recent' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setCurrentTab('Recent'); }}>
-                        <div className="icon-wrapper banana-glow banana-cyan"><Clock size={22} strokeWidth={2} /></div>
+                        <div className="icon-wrapper banana-glow banana-blue"><Clock size={22} strokeWidth={2} /></div>
                         <span>Recent</span>
                     </a>
                     <a href="#" className={`nav-item ${currentTab === 'Analytics' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setCurrentTab('Analytics'); }}>
@@ -700,6 +705,8 @@ export default function Home() {
                 <div className="content-layout">
                     <div className="left-panel">
                         {currentTab === 'Waitlist' && <WaitlistTable entries={entries} defaultSmsMessage={defaultSmsMessage} servers={servers} sections={sections} fetchEntries={fetchEntries} fetchPastEntries={fetchPastEntries} />}
+
+                        {currentTab === 'Floor Plan' && <FloorPlan restaurantId={restaurantId} />}
 
                         {currentTab === 'Reservations' && (
                             <div>
