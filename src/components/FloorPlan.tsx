@@ -53,6 +53,8 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
     const [isDrawing, setIsDrawing] = useState(false);
     const [drawingStart, setDrawingStart] = useState<{ x: number, y: number } | null>(null);
     const [drawingEnd, setDrawingEnd] = useState<{ x: number, y: number } | null>(null);
+    const [wallColor, setWallColor] = useState('#334155');
+    const [wallThickness, setWallThickness] = useState(8);
 
     // Form states
     const [newTableNum, setNewTableNum] = useState('');
@@ -357,9 +359,33 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                                     </button>
                                 </>
                             ) : (
-                                <span style={{ fontSize: '0.9rem', color: '#64748b', paddingRight: '0.5rem' }}>
-                                    Click and drag to draw a wall.
-                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Color:</span>
+                                        <input
+                                            type="color"
+                                            value={wallColor}
+                                            onChange={e => setWallColor(e.target.value)}
+                                            style={{ width: '32px', height: '32px', padding: '0', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }}
+                                            title="Wall Color"
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Thickness:</span>
+                                        <input
+                                            type="number"
+                                            value={wallThickness}
+                                            onChange={e => setWallThickness(Number(e.target.value))}
+                                            style={{ width: '60px', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                                            min={1}
+                                            max={40}
+                                            title="Wall Thickness"
+                                        />
+                                    </div>
+                                    <span style={{ fontSize: '0.8rem', color: '#64748b', paddingLeft: '0.5rem', borderLeft: '1px solid #cbd5e1', marginLeft: '0.25rem' }}>
+                                        Click and drag to draw a wall.
+                                    </span>
+                                </div>
                             )}
                         </div>
                     )}
@@ -440,8 +466,8 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                                 start_y: Math.round(drawingStart.y),
                                 end_x: Math.round(drawingEnd.x),
                                 end_y: Math.round(drawingEnd.y),
-                                thickness: 8,
-                                color: '#334155',
+                                thickness: wallThickness,
+                                color: wallColor,
                                 restaurant_id: restaurantId!,
                                 floor_plan_name: activePlan
                             };
@@ -479,8 +505,8 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                             y1={drawingStart.y}
                             x2={drawingEnd.x}
                             y2={drawingEnd.y}
-                            stroke="#334155"
-                            strokeWidth={8}
+                            stroke={wallColor}
+                            strokeWidth={wallThickness}
                             strokeLinecap="round"
                             opacity={0.5}
                         />
