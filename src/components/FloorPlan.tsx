@@ -113,7 +113,7 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
             if (error.code === '42P01') {
                 alert('Table "restaurant_tables" does not exist yet. Please run the provided SQL in your Supabase dashboard.');
             } else if (error.code === '42703' || error.message?.includes('floor_plan_name')) {
-                alert('Support for multiple floor plans requires a database update!\\n\\nPlease run this SQL in your Supabase dashboard:\\n\\nALTER TABLE restaurant_tables ADD COLUMN floor_plan_name text DEFAULT \\'Main\\';');
+                alert(`Support for multiple floor plans requires a database update!\n\nPlease run this SQL in your Supabase dashboard:\n\nALTER TABLE restaurant_tables ADD COLUMN floor_plan_name text DEFAULT 'Main';`);
             } else {
                 console.error(error);
                 alert("Error adding table: " + error.message);
@@ -212,7 +212,7 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                                 borderRadius: '8px',
                                 border: '1px solid #cbd5e1',
                                 fontWeight: 700,
-                                color: 'var(--brand-primary)',
+                                color: '#3b82f6',
                                 background: '#f8fafc',
                                 cursor: 'pointer',
                                 outline: 'none'
@@ -253,7 +253,7 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                             <button
                                 onClick={handleAddTable}
                                 style={{
-                                    background: 'var(--brand-primary)',
+                                    background: '#3b82f6',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '4px',
@@ -282,9 +282,9 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                             padding: '0.6rem 1.2rem',
                             borderRadius: '8px',
                             border: '1px solid',
-                            borderColor: isEditMode ? 'var(--brand-primary)' : '#e2e8f0',
+                            borderColor: isEditMode ? '#3b82f6' : '#e2e8f0',
                             background: isEditMode ? '#eff6ff' : 'white',
-                            color: isEditMode ? 'var(--brand-primary)' : 'var(--text-primary)',
+                            color: isEditMode ? '#3b82f6' : 'var(--text-primary)',
                             cursor: 'pointer',
                             fontWeight: '600',
                             transition: 'all 0.2s',
