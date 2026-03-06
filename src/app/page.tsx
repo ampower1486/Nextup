@@ -1575,21 +1575,23 @@ export default function Home() {
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding-top: 1.5rem;
+            padding-top: 1rem;
             z-index: 10;
+            overflow-y: auto;
         }
         .sidebar-logo {
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
             display: flex;
             justify-content: center;
             width: 100%;
+            flex-shrink: 0;
         }
         .brand-logo {
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
             border-radius: 20px;
             object-fit: cover;
-            box-shadow: 0 8px 25px rgba(0, 195, 255, 0.5), inset 0 2px 5px rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 15px rgba(0, 195, 255, 0.3), inset 0 2px 5px rgba(255, 255, 255, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .sidebar-nav {
@@ -1646,7 +1648,7 @@ export default function Home() {
         .banana-glow.banana-gray     { color: #94a3b8; box-shadow: 0 4px 15px rgba(148, 163, 184, 0.2); }
         .banana-glow.banana-red      { color: #f87171; box-shadow: 0 4px 15px rgba(248, 113, 113, 0.2); }
 
-        .nav-logout { margin-top: auto; padding-bottom: 2rem; }
+        .nav-logout { margin-top: auto; padding-bottom: 1rem; padding-top: 1rem; }
 
         /* Main Area inside Dashboard */
         .main-area {
@@ -1661,7 +1663,7 @@ export default function Home() {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 2rem 3rem;
+            padding: 1rem 3rem;
             background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
             border-bottom: 1px solid rgba(255,255,255,0.1);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
