@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Plus, Trash2, CheckCircle2, AlertCircle, Clock, Ban, Settings2, Pencil, MousePointer2 } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, AlertCircle, Clock, Ban, Settings2, Pencil, MousePointer2, Copy } from 'lucide-react';
 
 const supabase = createClient();
 
@@ -173,6 +173,42 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
         if (!confirm('Are you sure you want to delete this table?')) return;
         await supabase.from('restaurant_tables').delete().eq('id', id);
         if (selectedTable?.id === id) setSelectedTable(null);
+        fetchTables(); // Trigger refresh instead of waiting for realtime to avoid inconsistencies
+    };
+
+    const handleDuplicateTable = async (table: RestaurantTable) => {
+        const newTable = {
+            table_number: `${table.table_number} (copy)`,
+            seats: table.seats,
+            shape: table.shape,
+            status: 'available',
+            pos_x: table.pos_x + 30, // Offset slightly
+            pos_y: table.pos_y + 30,
+            width: table.width,
+            height: table.height,
+            restaurant_id: table.restaurant_id,
+            floor_plan_name: table.floor_plan_name
+        };
+        const { error } = await supabase.from('restaurant_tables').insert([newTable]);
+        if (error) {
+            console.error(error);
+            alert("Error duplicating table: " + error.message);
+        } else {
+            fetchTables();
+        }
+    };
+
+    const handleEditTableDetails = async (table: RestaurantTable) => {
+        const newNum = prompt("Enter new table number/name:", table.table_number);
+        if (newNum === null) return;
+        const newSeatsStr = prompt("Enter new number of seats:", table.seats.toString());
+        if (newSeatsStr === null) return;
+        const newSeats = parseInt(newSeatsStr, 10);
+
+        await supabase.from('restaurant_tables').update({
+            table_number: newNum || table.table_number,
+            seats: isNaN(newSeats) ? table.seats : newSeats
+        }).eq('id', table.id);
         fetchTables();
     };
 
@@ -259,6 +295,12 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                                     if (name && name.trim()) {
                                         setFloorPlans(prev => [...prev, name.trim()]);
                                         setActivePlan(name.trim());
+                                        // Auto-sync with Dining Sections
+                                        supabase.from('waitlist_sections')
+                                            .insert([{ name: name.trim(), restaurant_id: restaurantId }])
+                                            .then(({ error }) => {
+                                                if (error) console.error("Could not sync floor plan to sections", error);
+                                            });
                                     } else {
                                         // Reset to previously active plan if cancelled
                                         setActivePlan(activePlan);
@@ -596,6 +638,8 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                         onResizeEnd={handleResizeEnd}
                         onClick={() => !isEditMode && setSelectedTable(table)}
                         onDelete={() => handleDeleteTable(table.id)}
+                        onDuplicate={() => handleDuplicateTable(table)}
+                        onEdit={() => handleEditTableDetails(table)}
                         colors={getStatusColor(table.status)}
                     />
                 ))}
@@ -663,13 +707,15 @@ function StatusButton({ icon, label, color, bg, onClick }: { icon: any, label: s
     );
 }
 
-function DraggableTable({ table, isEditMode, onDragEnd, onResizeEnd, onClick, onDelete, colors }: {
+function DraggableTable({ table, isEditMode, onDragEnd, onResizeEnd, onClick, onDelete, onDuplicate, onEdit, colors }: {
     table: RestaurantTable,
     isEditMode: boolean,
     onDragEnd: (id: string, x: number, y: number) => void,
     onResizeEnd: (id: string, w: number, h: number) => void,
     onClick: () => void,
     onDelete: () => void,
+    onDuplicate: () => void,
+    onEdit: () => void,
     colors: { bg: string, border: string, text: string }
 }) {
     const [isDragging, setIsDragging] = useState(false);
@@ -815,18 +861,19 @@ function DraggableTable({ table, isEditMode, onDragEnd, onResizeEnd, onClick, on
 
             {isEditMode && !isDragging && !isResizing && (
                 <>
+                    {/* Delete Button (Top Right) */}
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(); }}
                         style={{
                             position: 'absolute',
-                            top: -8,
-                            right: -8,
+                            top: -10,
+                            right: -10,
                             background: '#ef4444',
                             color: 'white',
                             border: 'none',
                             borderRadius: '50%',
-                            width: '24px',
-                            height: '24px',
+                            width: '26px',
+                            height: '26px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -835,6 +882,50 @@ function DraggableTable({ table, isEditMode, onDragEnd, onResizeEnd, onClick, on
                         }}
                     >
                         <Trash2 size={12} />
+                    </button>
+                    {/* Duplicate Button (Top Left) */}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+                        style={{
+                            position: 'absolute',
+                            top: -10,
+                            left: -10,
+                            background: '#10b981',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '26px',
+                            height: '26px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                        }}
+                    >
+                        <Copy size={12} />
+                    </button>
+                    {/* Edit Details Button (Bottom Left) */}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                        style={{
+                            position: 'absolute',
+                            bottom: -10,
+                            left: -10,
+                            background: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '26px',
+                            height: '26px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                        }}
+                    >
+                        <Settings2 size={12} />
                     </button>
                     <div
                         onPointerDown={handleResizePointerDown}
