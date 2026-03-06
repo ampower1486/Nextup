@@ -888,7 +888,7 @@ function DraggableTable({ table, isEditMode, onDragEnd, onResizeEnd, onClick, on
                 <>
                     {/* Delete Button (Top Right) */}
                     <button
-                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                        onPointerDown={(e) => { e.stopPropagation(); onDelete(); }}
                         style={{
                             position: 'absolute',
                             top: -10,
@@ -910,7 +910,7 @@ function DraggableTable({ table, isEditMode, onDragEnd, onResizeEnd, onClick, on
                     </button>
                     {/* Duplicate Button (Top Left) */}
                     <button
-                        onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+                        onPointerDown={(e) => { e.stopPropagation(); onDuplicate(); }}
                         style={{
                             position: 'absolute',
                             top: -10,
@@ -932,7 +932,7 @@ function DraggableTable({ table, isEditMode, onDragEnd, onResizeEnd, onClick, on
                     </button>
                     {/* Edit Details Button (Bottom Left) */}
                     <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                        onPointerDown={(e) => { e.stopPropagation(); onEdit(); }}
                         style={{
                             position: 'absolute',
                             bottom: -10,
