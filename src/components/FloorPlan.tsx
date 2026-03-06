@@ -191,8 +191,17 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
     };
 
     const handleDragEnd = async (id: string, newX: number, newY: number) => {
-        setTables(prev => prev.map(t => t.id === id ? { ...t, pos_x: newX, pos_y: newY } : t));
-        await supabase.from('restaurant_tables').update({ pos_x: newX, pos_y: newY }).eq('id', id);
+        const roundX = Math.round(newX);
+        const roundY = Math.round(newY);
+        setTables(prev => prev.map(t => t.id === id ? { ...t, pos_x: roundX, pos_y: roundY } : t));
+        await supabase.from('restaurant_tables').update({ pos_x: roundX, pos_y: roundY }).eq('id', id);
+    };
+
+    const handleResizeEnd = async (id: string, newW: number, newH: number) => {
+        const roundW = Math.max(40, Math.round(newW));
+        const roundH = Math.max(40, Math.round(newH));
+        setTables(prev => prev.map(t => t.id === id ? { ...t, width: roundW, height: roundH } : t));
+        await supabase.from('restaurant_tables').update({ width: roundW, height: roundH }).eq('id', id);
     };
 
     const getStatusColor = (status: TableStatus) => {
@@ -584,6 +593,7 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                         table={table}
                         isEditMode={isEditMode && editTool === 'tables'}
                         onDragEnd={handleDragEnd}
+                        onResizeEnd={handleResizeEnd}
                         onClick={() => !isEditMode && setSelectedTable(table)}
                         onDelete={() => handleDeleteTable(table.id)}
                         colors={getStatusColor(table.status)}
@@ -653,22 +663,31 @@ function StatusButton({ icon, label, color, bg, onClick }: { icon: any, label: s
     );
 }
 
-function DraggableTable({ table, isEditMode, onDragEnd, onClick, onDelete, colors }: {
+function DraggableTable({ table, isEditMode, onDragEnd, onResizeEnd, onClick, onDelete, colors }: {
     table: RestaurantTable,
     isEditMode: boolean,
     onDragEnd: (id: string, x: number, y: number) => void,
+    onResizeEnd: (id: string, w: number, h: number) => void,
     onClick: () => void,
     onDelete: () => void,
     colors: { bg: string, border: string, text: string }
 }) {
     const [isDragging, setIsDragging] = useState(false);
+    const [isResizing, setIsResizing] = useState(false);
     const [pos, setPos] = useState({ x: table.pos_x, y: table.pos_y });
+    const [dim, setDim] = useState({ w: table.width, h: table.height });
 
     useEffect(() => {
         if (!isDragging) {
             setPos({ x: table.pos_x, y: table.pos_y });
         }
     }, [table.pos_x, table.pos_y, isDragging]);
+
+    useEffect(() => {
+        if (!isResizing) {
+            setDim({ w: table.width, h: table.height });
+        }
+    }, [table.width, table.height, isResizing]);
 
     const handlePointerDown = (e: React.PointerEvent) => {
         if (!isEditMode) {
@@ -712,6 +731,60 @@ function DraggableTable({ table, isEditMode, onDragEnd, onClick, onDelete, color
         window.addEventListener('pointerup', handlePointerUp);
     };
 
+    const handleResizePointerDown = (e: React.PointerEvent) => {
+        if (!isEditMode) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        setIsResizing(true);
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startW = dim.w;
+        const startH = dim.h;
+
+        const handlePointerMove = (moveEvent: PointerEvent) => {
+            const dx = moveEvent.clientX - startX;
+            const dy = moveEvent.clientY - startY;
+
+            let newW = Math.max(40, startW + dx);
+            let newH = Math.max(40, startH + dy);
+
+            if (table.shape === 'circle') {
+                const diameter = Math.max(newW, newH);
+                newW = diameter;
+                newH = diameter;
+            }
+
+            setDim({ w: newW, h: newH });
+        };
+
+        const handlePointerUp = (upEvent: PointerEvent) => {
+            setIsResizing(false);
+            (upEvent.target as HTMLElement).releasePointerCapture(upEvent.pointerId);
+
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+
+            const dx = upEvent.clientX - startX;
+            const dy = upEvent.clientY - startY;
+            let newW = Math.max(40, startW + dx);
+            let newH = Math.max(40, startH + dy);
+
+            if (table.shape === 'circle') {
+                const diameter = Math.max(newW, newH);
+                newW = diameter;
+                newH = diameter;
+            }
+
+            onResizeEnd(table.id, newW, newH);
+        };
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+    };
+
     return (
         <div
             onPointerDown={handlePointerDown}
@@ -719,10 +792,10 @@ function DraggableTable({ table, isEditMode, onDragEnd, onClick, onDelete, color
                 position: 'absolute',
                 left: pos.x,
                 top: pos.y,
-                width: table.width,
-                height: table.height,
+                width: dim.w,
+                height: dim.h,
                 background: colors.bg,
-                border: `2px solid ${isEditMode && isDragging ? '#3b82f6' : colors.border}`,
+                border: `2px solid ${isEditMode && (isDragging || isResizing) ? '#3b82f6' : colors.border}`,
                 color: colors.text,
                 borderRadius: table.shape === 'circle' ? '50%' : '12px',
                 display: 'flex',
@@ -730,38 +803,63 @@ function DraggableTable({ table, isEditMode, onDragEnd, onClick, onDelete, color
                 justifyContent: 'center',
                 alignItems: 'center',
                 cursor: isEditMode ? (isDragging ? 'grabbing' : 'grab') : 'pointer',
-                boxShadow: isDragging ? '0 10px 20px rgba(0,0,0,0.15)' : '0 4px 6px rgba(0,0,0,0.05)',
-                transition: isDragging ? 'none' : 'box-shadow 0.2s, background 0.3s, border-color 0.3s',
+                boxShadow: isDragging || isResizing ? '0 10px 20px rgba(0,0,0,0.15)' : '0 4px 6px rgba(0,0,0,0.05)',
+                transition: isDragging || isResizing ? 'none' : 'box-shadow 0.2s, background 0.3s, border-color 0.3s',
                 touchAction: 'none',
                 userSelect: 'none',
                 zIndex: 5
             }}
         >
             <span style={{ fontWeight: '800', fontSize: '1.2rem' }}>{table.table_number}</span>
-            <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>{table.seats} seats</span>
+            <span style={{ fontSize: '0.75rem', opacity: 0.8, display: dim.h < 60 ? 'none' : 'block' }}>{table.seats} seats</span>
 
-            {isEditMode && !isDragging && (
-                <button
-                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                    style={{
-                        position: 'absolute',
-                        top: -8,
-                        right: -8,
-                        background: '#ef4444',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '24px',
-                        height: '24px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                    }}
-                >
-                    <Trash2 size={12} />
-                </button>
+            {isEditMode && !isDragging && !isResizing && (
+                <>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                        style={{
+                            position: 'absolute',
+                            top: -8,
+                            right: -8,
+                            background: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '24px',
+                            height: '24px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                        }}
+                    >
+                        <Trash2 size={12} />
+                    </button>
+                    <div
+                        onPointerDown={handleResizePointerDown}
+                        style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            right: 0,
+                            width: '24px',
+                            height: '24px',
+                            cursor: 'nwse-resize',
+                            background: 'transparent'
+                        }}
+                    >
+                        <div style={{
+                            position: 'absolute',
+                            bottom: '4px',
+                            right: '4px',
+                            width: '10px',
+                            height: '10px',
+                            borderRight: `3px solid ${colors.text}`,
+                            borderBottom: `3px solid ${colors.text}`,
+                            opacity: 0.6
+                        }} />
+                    </div>
+                </>
             )}
         </div>
     );
