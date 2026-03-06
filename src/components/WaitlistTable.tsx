@@ -80,14 +80,16 @@ export default function WaitlistTable({
     servers = [],
     sections = [],
     fetchEntries,
-    fetchPastEntries
+    fetchPastEntries,
+    restaurantId
 }: {
     entries: WaitlistEntry[],
     defaultSmsMessage?: string,
     servers?: ServerItem[],
     sections?: SectionItem[],
     fetchEntries?: () => void,
-    fetchPastEntries?: () => void
+    fetchPastEntries?: () => void,
+    restaurantId?: string | null
 }) {
     const [editingEntry, setEditingEntry] = useState<WaitlistEntry | null>(null);
     const [editName, setEditName] = useState('');
@@ -100,6 +102,21 @@ export default function WaitlistTable({
     const [seatingEntry, setSeatingEntry] = useState<WaitlistEntry | null>(null);
     const [selectedServer, setSelectedServer] = useState('');
     const [selectedSection, setSelectedSection] = useState('');
+    const [selectedTable, setSelectedTable] = useState('');
+    const [availableTables, setAvailableTables] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (seatingEntry && restaurantId) {
+            const fetchTables = async () => {
+                const supabase = createClient();
+                const { data } = await supabase.from('restaurant_tables')
+                    .select('*')
+                    .eq('restaurant_id', restaurantId);
+                if (data) setAvailableTables(data);
+            };
+            fetchTables();
+        }
+    }, [seatingEntry, restaurantId]);
 
     const openEdit = (entry: WaitlistEntry) => {
         setEditingEntry(entry);
@@ -189,12 +206,21 @@ export default function WaitlistTable({
         if (fetchPastEntries) fetchPastEntries();
     };
 
-    const confirmSeat = () => {
+    const confirmSeat = async () => {
         if (!seatingEntry) return;
-        handleUpdateStatus(seatingEntry, 'Seated', selectedServer, selectedSection);
+
+        if (selectedTable) {
+            const supabase = createClient();
+            await supabase.from('restaurant_tables')
+                .update({ status: 'occupied' })
+                .eq('id', selectedTable);
+        }
+
+        await handleUpdateStatus(seatingEntry, 'Seated', selectedServer, selectedSection);
         setSeatingEntry(null);
         setSelectedServer('');
         setSelectedSection('');
+        setSelectedTable('');
     };
 
     return (
@@ -365,18 +391,38 @@ export default function WaitlistTable({
                             )}
                             {sections.length > 0 && (
                                 <div className="form-group">
-                                    <label>Assign Section (Optional)</label>
+                                    <label>Assign Floor Plan (Optional)</label>
                                     <select
                                         value={selectedSection}
                                         onChange={e => setSelectedSection(e.target.value)}
                                         style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', fontFamily: 'inherit' }}
                                     >
-                                        <option value="">-- No section --</option>
+                                        <option value="">-- No floor plan --</option>
                                         {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
                                 </div>
                             )}
-                            {(servers.length === 0 && sections.length === 0) && (
+                            {availableTables.length > 0 && (
+                                <div className="form-group">
+                                    <label>Assign Table (Optional)</label>
+                                    <select
+                                        value={selectedTable}
+                                        onChange={e => setSelectedTable(e.target.value)}
+                                        style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', fontFamily: 'inherit' }}
+                                    >
+                                        <option value="">-- No table --</option>
+                                        {availableTables
+                                            .filter(t => !selectedSection || t.floor_plan_name === sections.find(s => s.id === selectedSection)?.name)
+                                            .sort((a, b) => a.table_number.localeCompare(b.table_number))
+                                            .map(t => (
+                                                <option key={t.id} value={t.id}>
+                                                    Table {t.table_number} ({t.seats} seats) {t.status !== 'available' ? `- ${t.status.toUpperCase()}` : ''}
+                                                </option>
+                                            ))}
+                                    </select>
+                                </div>
+                            )}
+                            {(servers.length === 0 && sections.length === 0 && availableTables.length === 0) && (
                                 <p style={{ color: '#64748b', fontSize: '0.95rem' }}>Are you sure you want to seat this party?</p>
                             )}
                             <div className="modal-actions">

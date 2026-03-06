@@ -704,7 +704,7 @@ export default function Home() {
 
                 <div className="content-layout">
                     <div className="left-panel">
-                        {currentTab === 'Waitlist' && <WaitlistTable entries={entries} defaultSmsMessage={defaultSmsMessage} servers={servers} sections={sections} fetchEntries={fetchEntries} fetchPastEntries={fetchPastEntries} />}
+                        {currentTab === 'Waitlist' && <WaitlistTable entries={entries} defaultSmsMessage={defaultSmsMessage} servers={servers} sections={sections} fetchEntries={fetchEntries} fetchPastEntries={fetchPastEntries} restaurantId={restaurantId} />}
 
                         {currentTab === 'Floor Plan' && <FloorPlan restaurantId={restaurantId} />}
 
@@ -918,9 +918,9 @@ export default function Home() {
                                         </ul>
                                     </div>
                                     <div className="stats-box" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--table-border)' }}>
-                                        <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', color: 'var(--text-primary)' }}>Seated by Section (Today)</h3>
+                                        <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', color: 'var(--text-primary)' }}>Seated by Floor Plan (Today)</h3>
                                         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                                            {sections.length === 0 ? <li style={{ color: '#888', fontStyle: 'italic', fontSize: '0.9rem' }}>No sections configured.</li> : null}
+                                            {sections.length === 0 ? <li style={{ color: '#888', fontStyle: 'italic', fontSize: '0.9rem' }}>No floor plans configured.</li> : null}
                                             {sections.map(section => {
                                                 const seatedCount = pastEntries.filter(e => e.status === 'Seated' && e.section_id === section.id).length;
                                                 return (
@@ -1466,13 +1466,13 @@ export default function Home() {
                                         <div style={{ background: '#dcfce7', color: '#10b981', padding: '0.5rem', borderRadius: '8px' }}>
                                             <LayoutGrid size={18} strokeWidth={2.5} />
                                         </div>
-                                        <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a', fontWeight: '700' }}>Dining Sections</h3>
+                                        <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a', fontWeight: '700' }}>Floor Plans</h3>
                                     </div>
                                     <div style={{ padding: '1rem' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
                                             <input
                                                 type="text"
-                                                placeholder="e.g. Patio, Area 1"
+                                                placeholder="e.g. Patio, Main Floor"
                                                 value={newSectionName}
                                                 onChange={e => setNewSectionName(e.target.value)}
                                                 className="settings-input"
@@ -1491,7 +1491,7 @@ export default function Home() {
                                                     </button>
                                                 </div>
                                             ))}
-                                            {sections.length === 0 && <span style={{ fontSize: '0.85rem', color: '#94a3b8', textAlign: 'center', padding: '1rem', fontStyle: 'italic', display: 'block' }}>No sections added.</span>}
+                                            {sections.length === 0 && <span style={{ fontSize: '0.85rem', color: '#94a3b8', textAlign: 'center', padding: '1rem', fontStyle: 'italic', display: 'block' }}>No floor plans added.</span>}
                                         </div>
                                     </div>
                                 </div>
