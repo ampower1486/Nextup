@@ -1459,42 +1459,6 @@ export default function Home() {
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* SECTIONS */}
-                                <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-                                    <div style={{ padding: '1rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <div style={{ background: '#dcfce7', color: '#10b981', padding: '0.5rem', borderRadius: '8px' }}>
-                                            <LayoutGrid size={18} strokeWidth={2.5} />
-                                        </div>
-                                        <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a', fontWeight: '700' }}>Floor Plans</h3>
-                                    </div>
-                                    <div style={{ padding: '1rem' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                                            <input
-                                                type="text"
-                                                placeholder="e.g. Patio, Main Floor"
-                                                value={newSectionName}
-                                                onChange={e => setNewSectionName(e.target.value)}
-                                                className="settings-input"
-                                                style={{ margin: 0, flex: 1, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)' }}
-                                            />
-                                            <button onClick={handleAddSection} style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', padding: '0 0.8rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)' }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-1px)'} onMouseOut={e => e.currentTarget.style.transform = 'none'}>
-                                                <Plus size={16} strokeWidth={3} />
-                                            </button>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto', paddingRight: '0.25rem' }}>
-                                            {sections.map(s => (
-                                                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0.8rem', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', alignItems: 'center', transition: 'all 0.2s', cursor: 'default' }} onMouseOver={e => e.currentTarget.style.borderColor = '#cbd5e1'} onMouseOut={e => e.currentTarget.style.borderColor = '#e2e8f0'}>
-                                                    <span style={{ fontWeight: '600', color: '#334155', fontSize: '0.9rem' }}>{s.name}</span>
-                                                    <button onClick={() => handleDeleteSection(s.id)} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', borderRadius: '6px', height: '24px', width: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e => { e.currentTarget.style.background = '#f87171'; e.currentTarget.style.color = 'white'; }} onMouseOut={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#ef4444'; }}>
-                                                        <Trash2 size={12} strokeWidth={2.5} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            {sections.length === 0 && <span style={{ fontSize: '0.85rem', color: '#94a3b8', textAlign: 'center', padding: '1rem', fontStyle: 'italic', display: 'block' }}>No floor plans added.</span>}
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
 
                             <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '2px solid #fee2e2' }}>

@@ -310,7 +310,7 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                     </div>
 
                     {/* Floor Plan Selector */}
-                    <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '0.5rem', gap: '0.5rem' }}>
                         <select
                             value={activePlan}
                             onChange={e => {
@@ -349,6 +349,59 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                             {floorPlans.map(p => <option key={p} value={p}>{p}</option>)}
                             <option value="NEW_PLAN">+ Create New Plan</option>
                         </select>
+                        {isEditMode && floorPlans.length > 1 && (
+                            <button
+                                onClick={async () => {
+                                    if (!confirm(`Are you sure you want to delete the "${activePlan}" floor plan? All tables and walls in this plan will be permanently removed.`)) return;
+                                    if (!restaurantId) return;
+
+                                    // Delete all tables for this floor plan
+                                    await supabase.from('restaurant_tables')
+                                        .delete()
+                                        .eq('restaurant_id', restaurantId)
+                                        .eq('floor_plan_name', activePlan);
+
+                                    // Delete all walls for this floor plan
+                                    await supabase.from('restaurant_walls')
+                                        .delete()
+                                        .eq('restaurant_id', restaurantId)
+                                        .eq('floor_plan_name', activePlan);
+
+                                    // Delete from waitlist_sections
+                                    await supabase.from('waitlist_sections')
+                                        .delete()
+                                        .eq('restaurant_id', restaurantId)
+                                        .eq('name', activePlan);
+
+                                    // Remove from local state and switch to another plan
+                                    const remaining = floorPlans.filter(p => p !== activePlan);
+                                    setFloorPlans(remaining.length > 0 ? remaining : ['Main']);
+                                    setActivePlan(remaining.length > 0 ? remaining[0] : 'Main');
+                                    setSelectedTable(null);
+                                    fetchTables();
+                                    fetchWalls();
+                                    fetchSections();
+                                }}
+                                title="Delete this floor plan"
+                                style={{
+                                    background: '#fee2e2',
+                                    color: '#ef4444',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    width: '34px',
+                                    height: '34px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseOver={e => { e.currentTarget.style.background = '#f87171'; e.currentTarget.style.color = 'white'; }}
+                                onMouseOut={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#ef4444'; }}
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        )}
                     </div>
                 </div>
 

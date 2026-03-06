@@ -389,19 +389,6 @@ export default function WaitlistTable({
                                     </select>
                                 </div>
                             )}
-                            {sections.length > 0 && (
-                                <div className="form-group">
-                                    <label>Assign Floor Plan (Optional)</label>
-                                    <select
-                                        value={selectedSection}
-                                        onChange={e => setSelectedSection(e.target.value)}
-                                        style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', fontFamily: 'inherit' }}
-                                    >
-                                        <option value="">-- No floor plan --</option>
-                                        {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                    </select>
-                                </div>
-                            )}
                             {availableTables.length > 0 && (
                                 <div className="form-group">
                                     <label>Assign Table (Optional)</label>
@@ -412,17 +399,19 @@ export default function WaitlistTable({
                                     >
                                         <option value="">-- No table --</option>
                                         {availableTables
-                                            .filter(t => !selectedSection || t.floor_plan_name === sections.find(s => s.id === selectedSection)?.name)
-                                            .sort((a, b) => a.table_number.localeCompare(b.table_number))
+                                            .sort((a, b) => {
+                                                if (a.floor_plan_name !== b.floor_plan_name) return (a.floor_plan_name || '').localeCompare(b.floor_plan_name || '');
+                                                return a.table_number.localeCompare(b.table_number);
+                                            })
                                             .map(t => (
                                                 <option key={t.id} value={t.id}>
-                                                    Table {t.table_number} ({t.seats} seats) {t.status !== 'available' ? `- ${t.status.toUpperCase()}` : ''}
+                                                    {t.floor_plan_name ? `[${t.floor_plan_name}] ` : ''}Table {t.table_number} ({t.seats} seats) {t.status !== 'available' ? `- ${t.status.toUpperCase()}` : ''}
                                                 </option>
                                             ))}
                                     </select>
                                 </div>
                             )}
-                            {(servers.length === 0 && sections.length === 0 && availableTables.length === 0) && (
+                            {(servers.length === 0 && availableTables.length === 0) && (
                                 <p style={{ color: '#64748b', fontSize: '0.95rem' }}>Are you sure you want to seat this party?</p>
                             )}
                             <div className="modal-actions">
