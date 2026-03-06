@@ -69,6 +69,7 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
 
         fetchTables();
         fetchWalls();
+        fetchSections();
 
         const channel = supabase
             .channel('floor-plan-changes')
@@ -86,12 +87,35 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                     fetchWalls();
                 }
             )
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'waitlist_sections', filter: `restaurant_id=eq.${restaurantId}` },
+                () => {
+                    fetchSections();
+                }
+            )
             .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
         };
     }, [restaurantId]);
+
+    const fetchSections = async () => {
+        if (!restaurantId) return;
+        const { data, error } = await supabase
+            .from('waitlist_sections')
+            .select('name')
+            .eq('restaurant_id', restaurantId);
+
+        if (!error && data) {
+            const sectionNames = data.map(d => d.name);
+            setFloorPlans(prev => {
+                const combined = new Set([...prev, ...sectionNames]);
+                return Array.from(combined);
+            });
+        }
+    };
 
     const fetchWalls = async () => {
         if (!restaurantId) return;
@@ -127,7 +151,7 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
             data.forEach((t: any) => {
                 if (t.floor_plan_name) plans.add(t.floor_plan_name);
             });
-            if (plans.size === 0) plans.add('Main');
+            if (plans.size === 0 && floorPlans.length === 0) plans.add('Main');
 
             const plansArray = Array.from(plans);
             setFloorPlans(prev => {
@@ -300,6 +324,7 @@ export default function FloorPlan({ restaurantId }: FloorPlanProps) {
                                             .insert([{ name: name.trim(), restaurant_id: restaurantId }])
                                             .then(({ error }) => {
                                                 if (error) console.error("Could not sync floor plan to sections", error);
+                                                fetchSections();
                                             });
                                     } else {
                                         // Reset to previously active plan if cancelled
